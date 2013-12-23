@@ -14,13 +14,17 @@ const (
 
 	// limitOrder is defined as 1
 	limitOrder
+)
 
+const (
 	// iota is reset to 0, so bidSide is set to 0
 	bidSide orderSide = iota
 
 	// askSide is set to 1
 	askSide
+)
 
+const (
 	pendingStatus orderStatus = iota
 	openStatus
 	partiallyFilledStatus
