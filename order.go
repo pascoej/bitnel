@@ -6,6 +6,7 @@ import (
 
 type orderType int
 type orderSide int
+type orderStatus int
 
 const (
 	// marketOrder is defined as 0
@@ -19,6 +20,12 @@ const (
 
 	// askSide is set to 1
 	askSide
+
+	pendingStatus orderStatus = iota
+	openStatus
+	partiallyFilledStatus
+	completedStatus
+	canceledStatus
 )
 
 type order struct {
@@ -30,7 +37,8 @@ type order struct {
 	// in these cases price is a nil pointer
 	price *int64
 
-	side orderSide
+	side   orderSide
+	status orderStatus
 
 	// `type` is a reseved golang keyword
 	oType orderType
