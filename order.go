@@ -5,8 +5,6 @@ import (
 )
 
 type orderType int
-type orderSide int
-type orderStatus int
 
 const (
 	// marketOrder is defined as 0
@@ -16,6 +14,19 @@ const (
 	limitOrder
 )
 
+func (x orderType) String() string {
+	switch x {
+	case marketOrder:
+		return "market"
+	case limitOrder:
+		return "limit"
+	}
+
+	return ""
+}
+
+type orderSide int
+
 const (
 	// iota is reset to 0, so bidSide is set to 0
 	bidSide orderSide = iota
@@ -24,6 +35,19 @@ const (
 	askSide
 )
 
+func (x orderSide) String() string {
+	switch x {
+	case askSide:
+		return "ask"
+	case bidSide:
+		return "bid"
+	}
+
+	return ""
+}
+
+type orderStatus int
+
 const (
 	pendingStatus orderStatus = iota
 	openStatus
@@ -31,6 +55,23 @@ const (
 	completedStatus
 	canceledStatus
 )
+
+func (x orderStatus) String() string {
+	switch x {
+	case pendingStatus:
+		return "pending"
+	case openStatus:
+		return "open"
+	case partiallyFilledStatus:
+		return "partially_filled"
+	case completedStatus:
+		return "completed"
+	case canceledStatus:
+		return "canceled"
+	}
+
+	return ""
+}
 
 type order struct {
 	uuid         string
