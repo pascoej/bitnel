@@ -14,11 +14,10 @@ type user struct {
 	created_at   time.Time
 }
 
-func (u *user) hashPassword() error {
+func (u *user) hashPassword(cost int) error {
 	var err error
 
-	// Need to change cost later
-	u.passwordHash, err = bcrypt.GenerateFromPassword([]byte(u.password), 8)
+	u.passwordHash, err = bcrypt.GenerateFromPassword([]byte(u.password), cost)
 	if err != nil {
 		return errors.New("error hashing user password")
 	}
