@@ -75,6 +75,7 @@ func (x orderStatus) String() string {
 
 type order struct {
 	uuid         string
+	market_uuid  string
 	size         int64
 	initial_size int64
 
