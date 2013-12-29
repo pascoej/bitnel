@@ -1,18 +1,19 @@
 package main
 
-type currency struct {
-	code string
-	name string
-}
+type currency int
 
-var (
-	btc = &currency{
-		code: "btc",
-		name: "Bitcoin",
-	}
-
-	ltc = &currency{
-		code: "ltc",
-		name: "Litecoin",
-	}
+const (
+	btc currency = iota
+	ltc
 )
+
+func (c currency) String() string {
+	switch c {
+	case btc:
+		return "btc"
+	case ltc:
+		return "ltc"
+	}
+
+	return ""
+}
