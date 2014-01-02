@@ -1,0 +1,5 @@
+{
+	"database": "user=andrewtian dbname=bitnel_test sslmode=disable",
+	"listenAddr": ":8080",
+	"bcryptCost": 10
+}

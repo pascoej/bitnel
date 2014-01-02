@@ -13,9 +13,9 @@ var expectedConfig = &Config{
 
 // suppose that config.json.example is working too
 func TestLoadConfig(t *testing.T) {
-	config, err := LoadConfig("test/config.json")
+	config, err := LoadConfig("test/example.json")
 	if err != nil {
-		t.Error("can't read config.json")
+		t.Error("can't read test/example.json")
 	}
 
 	if !reflect.DeepEqual(config, expectedConfig) {
