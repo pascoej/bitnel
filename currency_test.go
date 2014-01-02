@@ -4,9 +4,9 @@ import (
 	"testing"
 )
 
-var expectedCurrencyCode = map[currency]string{
-	btc: "btc",
-	ltc: "ltc",
+var expectedCurrencyCode = map[Currency]string{
+	Btc: "btc",
+	Ltc: "ltc",
 }
 
 func TestCurrencyString(t *testing.T) {

@@ -4,22 +4,22 @@ import (
 	"testing"
 )
 
-var expectedOrderType = map[orderType]string{
-	marketOrder: "market",
-	limitOrder:  "limit",
+var expectedOrderType = map[OrderType]string{
+	MarketOrder: "market",
+	LimitOrder:  "limit",
 }
 
-var expectedOrderStatus = map[orderStatus]string{
-	pendingStatus:         "pending",
-	openStatus:            "open",
-	partiallyFilledStatus: "partially_filled",
-	completedStatus:       "completed",
-	canceledStatus:        "canceled",
+var expectedOrderStatus = map[OrderStatus]string{
+	PendingStatus:         "pending",
+	OpenStatus:            "open",
+	PartiallyFilledStatus: "partially_filled",
+	CompletedStatus:       "completed",
+	CanceledStatus:        "canceled",
 }
 
-var expectedOrderSide = map[orderSide]string{
-	bidSide: "bid",
-	askSide: "ask",
+var expectedOrderSide = map[OrderSide]string{
+	BidSide: "bid",
+	AskSide: "ask",
 }
 
 func TestOrderTypeString(t *testing.T) {

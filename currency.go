@@ -1,17 +1,17 @@
 package main
 
-type currency int
+type Currency int
 
 const (
-	btc currency = iota
-	ltc
+	Btc Currency = iota
+	Ltc
 )
 
-func (c currency) String() string {
+func (c Currency) String() string {
 	switch c {
-	case btc:
+	case Btc:
 		return "btc"
-	case ltc:
+	case Ltc:
 		return "ltc"
 	}
 

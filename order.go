@@ -4,90 +4,87 @@ import (
 	"time"
 )
 
-type orderType int
+type OrderType int
 
 const (
 	// marketOrder is defined as 0
-	marketOrder orderType = iota
+	MarketOrder OrderType = iota
 
 	// limitOrder is defined as 1
-	limitOrder
+	LimitOrder
 )
 
-func (x orderType) String() string {
+func (x OrderType) String() string {
 	switch x {
-	case marketOrder:
+	case MarketOrder:
 		return "market"
-	case limitOrder:
+	case LimitOrder:
 		return "limit"
 	}
 
 	return ""
 }
 
-type orderSide int
+type OrderSide int
 
 const (
 	// iota is reset to 0, so bidSide is set to 0
-	bidSide orderSide = iota
+	BidSide OrderSide = iota
 
 	// askSide is set to 1
-	askSide
+	AskSide
 )
 
-func (x orderSide) String() string {
+func (x OrderSide) String() string {
 	switch x {
-	case askSide:
+	case AskSide:
 		return "ask"
-	case bidSide:
+	case BidSide:
 		return "bid"
 	}
 
 	return ""
 }
 
-type orderStatus int
+type OrderStatus int
 
 const (
-	pendingStatus orderStatus = iota
-	openStatus
-	partiallyFilledStatus
-	completedStatus
-	canceledStatus
+	PendingStatus OrderStatus = iota
+	OpenStatus
+	PartiallyFilledStatus
+	CompletedStatus
+	CanceledStatus
 )
 
-func (x orderStatus) String() string {
+func (x OrderStatus) String() string {
 	switch x {
-	case pendingStatus:
+	case PendingStatus:
 		return "pending"
-	case openStatus:
+	case OpenStatus:
 		return "open"
-	case partiallyFilledStatus:
+	case PartiallyFilledStatus:
 		return "partially_filled"
-	case completedStatus:
+	case CompletedStatus:
 		return "completed"
-	case canceledStatus:
+	case CanceledStatus:
 		return "canceled"
 	}
 
 	return ""
 }
 
-type order struct {
-	uuid         string
-	market_uuid  string
-	size         int64
-	initial_size int64
+type Order struct {
+	Uuid        string
+	MarketUuid  string
+	Size        int64
+	InitialSize int64
 
 	// price is not applicable when order is a marketOrder
 	// in these cases price is a nil pointer
-	price *int64
+	Price *int64
 
-	side   orderSide
-	status orderStatus
-
-	// `type` is a reseved golang keyword
-	oType orderType
-
-	created_at time.Time
+	Side      OrderSide
+	Status    OrderStatus
+	Type      OrderType
+	CreatedAt time.Time
 }

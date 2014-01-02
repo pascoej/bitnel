@@ -6,18 +6,18 @@ import (
 	"time"
 )
 
-type user struct {
-	uuid         string
-	email        string
-	password     string
-	passwordHash []byte
-	created_at   time.Time
+type User struct {
+	Uuid         string
+	Email        string
+	Password     string
+	PasswordHash []byte
+	CreatedAt    time.Time
 }
 
-func (u *user) hashPassword(cost int) error {
+func (u *User) HashPassword(cost int) error {
 	var err error
 
-	u.passwordHash, err = bcrypt.GenerateFromPassword([]byte(u.password), cost)
+	u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(u.Password), cost)
 	if err != nil {
 		return errors.New("error hashing user password")
 	}
@@ -25,7 +25,7 @@ func (u *user) hashPassword(cost int) error {
 	return nil
 }
 
-func (u *user) comparePassword(pass string) bool {
+func (u *User) ComparePassword(pass string) bool {
 	// CompareHashAndPassword returns nil on success
-	return nil == bcrypt.CompareHashAndPassword(u.passwordHash, []byte(pass))
+	return nil == bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(pass))
 }

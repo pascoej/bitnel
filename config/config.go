@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"encoding/json"
@@ -7,19 +7,19 @@ import (
 )
 
 // Fields are uppercase so that they can be exported (accessed) by the json pkg
-type config struct {
+type Config struct {
 	Database   string `json:"database"`
 	ListenAddr string `json:"listenAddr"`
 	BcryptCost int    `json:"bcryptCost"`
 }
 
-func loadConfig(filename string) (*config, error) {
+func LoadConfig(filename string) (*Config, error) {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, errors.New("cannot read config file")
 	}
 
-	var m config
+	var m Config
 	err = json.Unmarshal(b, &m)
 
 	if err != nil {

@@ -1,11 +1,11 @@
-package main
+package config
 
 import (
 	"reflect"
 	"testing"
 )
 
-var expectedConfig = &config{
+var expectedConfig = &Config{
 	Database:   "user=andrewtian dbname=bitnel_test sslmode=disable",
 	ListenAddr: ":8080",
 	BcryptCost: 10,
@@ -13,9 +13,9 @@ var expectedConfig = &config{
 
 // suppose that config.json.example is working too
 func TestLoadConfig(t *testing.T) {
-	config, err := loadConfig("config.json.example")
+	config, err := LoadConfig("test/config.json")
 	if err != nil {
-		t.Error("can't read config.json.example")
+		t.Error("can't read config.json")
 	}
 
 	if !reflect.DeepEqual(config, expectedConfig) {
