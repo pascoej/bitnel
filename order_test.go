@@ -4,47 +4,53 @@ import (
 	"testing"
 )
 
-var expectedOrderType = map[OrderType]string{
-	MarketOrder: "market",
-	LimitOrder:  "limit",
+var orderTypeTests = []struct {
+	otype    OrderType
+	exString string
+}{
+	{MarketOrder, "market"},
+	{LimitOrder, "limit"},
 }
 
-var expectedOrderStatus = map[OrderStatus]string{
-	PendingStatus:         "pending",
-	OpenStatus:            "open",
-	PartiallyFilledStatus: "partially_filled",
-	CompletedStatus:       "completed",
-	CanceledStatus:        "canceled",
-}
-
-var expectedOrderSide = map[OrderSide]string{
-	BidSide: "bid",
-	AskSide: "ask",
-}
-
-func TestOrderTypeString(t *testing.T) {
-	for ty, s := range expectedOrderType {
-		ts := ty.String()
-		if ts != s {
-			t.Errorf("%s expected, got %s", s, ts)
+func TestOrderType(t *testing.T) {
+	for _, tt := range orderTypeTests {
+		if tt.otype.String() != tt.exString {
+			t.Error("%s expected, got %s", tt.exString, tt.otype.String())
 		}
 	}
 }
 
-func TestOrderStatusString(t *testing.T) {
-	for ty, s := range expectedOrderStatus {
-		ts := ty.String()
-		if ts != s {
-			t.Errorf("%s expected, got %s", s, ts)
+var orderStatusTests = []struct {
+	ostatus  OrderStatus
+	exString string
+}{
+	{PendingStatus, "pending"},
+	{OpenStatus, "open"},
+	{PartiallyFilledStatus, "partially_filled"},
+	{CompletedStatus, "completed"},
+	{CanceledStatus, "canceled"},
+}
+
+func TestOrderStatus(t *testing.T) {
+	for _, tt := range orderStatusTests {
+		if tt.ostatus.String() != tt.exString {
+			t.Error("%s expected, got %s", tt.exString, tt.ostatus.String())
 		}
 	}
 }
 
-func TestOrderSideString(t *testing.T) {
-	for ty, s := range expectedOrderSide {
-		ts := ty.String()
-		if ts != s {
-			t.Errorf("%s expected, got %s", s, ts)
+var orderSideTests = []struct {
+	oside    OrderSide
+	exString string
+}{
+	{BidSide, "bid"},
+	{AskSide, "ask"},
+}
+
+func TestOrderSide(t *testing.T) {
+	for _, tt := range orderSideTests {
+		if tt.oside.String() != tt.exString {
+			t.Error("%s expected, got %s", tt.exString, tt.oside.String())
 		}
 	}
 }

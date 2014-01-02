@@ -4,16 +4,19 @@ import (
 	"testing"
 )
 
-var expectedCurrencyCode = map[Currency]string{
-	Btc: "btc",
-	Ltc: "ltc",
+var currencyTests = []struct {
+	curr     Currency
+	exString string
+}{
+	{Btc, "btc"},
+	{Ltc, "ltc"},
 }
 
-func TestCurrencyString(t *testing.T) {
-	for ty, s := range expectedCurrencyCode {
-		ts := ty.String()
-		if ts != s {
-			t.Errorf("%s expected, got %s", s, ts)
+func TestCurrency(t *testing.T) {
+	for _, tt := range currencyTests {
+		// test tt.curr.String() is equal to expected result
+		if tt.curr.String() != tt.exString {
+			t.Errorf("%s got, expected %s", tt.curr.String(), tt.exString)
 		}
 	}
 }
