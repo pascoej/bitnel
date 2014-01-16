@@ -7,6 +7,13 @@ import (
 	"net/http"
 )
 
+// This type is used for keys for the context library
+type contextVar int
+
+const (
+	marketUuid contextVar = iota
+)
+
 // This middleware wraps around all handlers concerning markets.
 func marketFinder(fn apiHandler) apiHandler {
 	return func(w http.ResponseWriter, r *http.Request) *serverError {

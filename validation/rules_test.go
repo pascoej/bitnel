@@ -14,6 +14,7 @@ var ruleTests = []struct {
 	{&Required{}, []interface{}{"asdf", 1232}, []interface{}{nil}},
 	{&MinLength{5}, []interface{}{"12345", "123459"}, []interface{}{"123", "1234", nil, 123}},
 	{&Length{2, 4}, []interface{}{"12", "1234", "123"}, []interface{}{"1", "12345", nil, 123}},
+	{&Range{2, 4}, []interface{}{3, 4, 2}, []interface{}{1, 5, 6}},
 }
 
 func TestRules(t *testing.T) {

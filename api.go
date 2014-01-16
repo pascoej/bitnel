@@ -7,8 +7,6 @@ import (
 	"net/http"
 )
 
-type apiResponse map[string]interface{}
-
 // API handler is a custom type that gives us the chance to log server errors
 // when handlers return a server error.
 type apiHandler func(http.ResponseWriter, *http.Request) *serverError
@@ -99,7 +97,7 @@ var (
 func writeError(w http.ResponseWriter, err *apiError) *serverError {
 	w.WriteHeader(err.Status)
 
-	m := apiResponse{
+	m := map[string]interface{}{
 		"message": err.Msg,
 		"type":    err.Type.String(),
 		"code":    err.Code.String(),
@@ -109,7 +107,7 @@ func writeError(w http.ResponseWriter, err *apiError) *serverError {
 }
 
 // `writeJson` should be used to communicate with user.
-func writeJson(w http.ResponseWriter, m apiResponse) *serverError {
+func writeJson(w http.ResponseWriter, m interface{}) *serverError {
 	if err := json.NewEncoder(w).Encode(m); err != nil {
 		return &serverError{err, "could not encode json"}
 	}

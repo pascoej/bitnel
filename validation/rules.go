@@ -125,3 +125,23 @@ func (v *Min) validate(i interface{}) bool {
 func (v *Min) errMsg() string {
 	return fmt.Sprintf("is not greater than %d", v.Min)
 }
+
+// Range validator
+type Range struct {
+	Min int
+	Max int
+}
+
+func (v *Range) validate(i interface{}) bool {
+	if num, ok := i.(int); ok {
+		if num >= v.Min && num <= v.Max {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (v *Range) errMsg() string {
+	return fmt.Sprintf("does not satisfy the range [%d, %d]", v.Min, v.Max)
+}
