@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"github.com/bitnel/bitnel-api/config"
+	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 )
@@ -19,6 +20,9 @@ func main() {
 	}
 
 	db, err = sql.Open("postgres", appConfig.Database)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	hd := routerHandler(router())
 	log.Fatal(http.ListenAndServe(appConfig.ListenAddr, hd))

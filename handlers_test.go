@@ -11,12 +11,12 @@ import (
 )
 
 var handlerTests = []struct {
-	handler func(http.ResponseWriter, *http.Request)
+	handler func(w http.ResponseWriter, r *http.Request) *serverError
 	method  string
 	path    string
 
 	// body is meant to handle a json request
-	body       map[string]interface{}
+	body       apiResponse
 	exStatus   int
 	exResponse interface{}
 }{
@@ -52,7 +52,7 @@ func TestHandlers(t *testing.T) {
 		var eb []byte
 
 		switch tty := tt.exResponse.(type) {
-		case map[string]interface{}:
+		case apiResponse:
 			eb, err = json.Marshal(tty)
 		case string:
 			eb = []byte(tty)
