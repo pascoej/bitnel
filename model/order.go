@@ -91,6 +91,14 @@ func ParseOrderSide(s string) (OrderSide, error) {
 	}
 }
 
+func (x OrderSide) CounterSide() OrderSide {
+	if x == BidSide {
+		return AskSide
+	}
+
+	return BidSide
+}
+
 func (x OrderSide) MarshalJSON() ([]byte, error) {
 	return []byte("\"" + x.String() + "\""), nil
 }

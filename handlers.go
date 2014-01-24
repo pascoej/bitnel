@@ -59,10 +59,12 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		return &serverError{err, "could not prepare tx"}
 	}
 
-	err = stmt.QueryRow(*user.Email, user.PasswordHash).Scan(&user.Uuid, user.Email, &user.CreatedAt)
+	err = stmt.QueryRow(*user.Email, user.PasswordHash).Scan(&user.Uuid, &user.Email, &user.CreatedAt)
 	if err != nil {
 		return &serverError{err, "could not insert"}
 	}
+
+	err = tx.Commit()
 
 	return writeJson(w, user)
 }
@@ -70,6 +72,48 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
 // Handles updating a user's information
 func updateUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
+}
+
+// cancels. does not delete
+func deleteOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
+	return nil
+}
+
+// Lists orders associated with a market
+func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
+	stmt, err := db.Prepare(`
+		SELECT uuid, market_uuid, size, initial_size, price, side, status, type, created_at
+		FROM orders
+		WHERE market_uuid = $1 AND status 
+	`)
+	if err != nil {
+		return &serverError{err, "could not prepare stmt"}
+	}
+
+	rows, err := stmt.Query(context.Get(r, marketUuid))
+	if err != nil {
+		return &serverError{err, "could not query"}
+	}
+
+	var orders []*model.Order
+
+	fmt.Println("yay")
+
+	for rows.Next() {
+		var order model.Order
+		if err := rows.Scan(&order.Uuid, &order.MarketUuid, &order.Size, &order.InitialSize, &order.Price, &order.Side, &order.Status, &order.Type, &order.CreatedAt); err != nil {
+			return &serverError{err, "error somewhere"}
+		}
+
+		fmt.Println(order)
+
+		orders = append(orders, &order)
+	}
+	if err := rows.Err(); err != nil {
+		return &serverError{err, "error somewhere"}
+	}
+
+	return writeJson(w, orders)
 }
 
 // Handles getting the information of an order
@@ -86,8 +130,14 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	}
 
 	var order model.Order
-	err = stmt.QueryRow(orderUuid).Scan(&order.Uuid, order.Size, &order.InitialSize,
-		order.Price, order.Side, order.Status, order.Type, &order.CreatedAt)
+	err = stmt.QueryRow(orderUuid).Scan(
+		&order.Uuid,
+		&order.Size,
+		&order.InitialSize,
+		&order.Price, order.Side,
+		&order.Status,
+		&order.Type,
+		&order.CreatedAt)
 	if err != nil {
 		return &serverError{err, "could not get order values"}
 	}
@@ -140,27 +190,33 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 
 	err = stmt.QueryRow(
 		context.Get(r, marketUuid),
-		*order.Size,
-		*order.Size,
-		*order.Price,
-		*order.Side,
+		order.Size,
+		order.Size,
+		order.Price,
+		order.Side,
 		order.Status,
-		*order.Type,
+		order.Type,
 	).Scan(
 		&order.Uuid,
 		&order.MarketUuid,
-		order.Size,
+		&order.Size,
 		&order.InitialSize,
-		order.Price,
-		order.Side,
+		&order.Price,
+		&order.Side,
 		&order.Status,
-		order.Type,
+		&order.Type,
 		&order.CreatedAt,
 	)
 
 	if err != nil {
 		return &serverError{err, "lol"}
 	}
+
+	if err = tx.Commit(); err != nil {
+		return &serverError{err, "tx commit err"}
+	}
+
+	globalMatchingEngine.add(order)
 
 	return writeJson(w, order)
 }

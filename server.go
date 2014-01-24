@@ -10,6 +10,7 @@ import (
 
 var appConfig *config.Config
 var db *sql.DB
+var globalMatchingEngine *MatchingEngine
 
 func main() {
 	var err error
@@ -23,6 +24,9 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	globalMatchingEngine = &MatchingEngine{}
+	globalMatchingEngine.start()
 
 	hd := routerHandler(router())
 	log.Fatal(http.ListenAndServe(appConfig.ListenAddr, hd))
