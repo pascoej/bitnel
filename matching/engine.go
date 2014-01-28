@@ -84,11 +84,11 @@ func (m *Engine) match(o *model.Order) *matchingError {
 			return &matchingError{o}
 		}
 		if *o.Size > *counterOrder.Size {
-			*counterOrder.Size = money.Unit(0)
 			counterOrder.Status = model.CompletedStatus
 
 			o.Status = model.PartiallyFilledStatus
 			*o.Size = *o.Size - *counterOrder.Size
+			*counterOrder.Size = money.Unit(0)
 		} else { // matched order gets totally filled
 			o.Status = model.CompletedStatus
 			counterOrder.Status = model.PartiallyFilledStatus

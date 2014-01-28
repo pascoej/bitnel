@@ -84,7 +84,7 @@ func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	stmt, err := db.Prepare(`
 		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
 		FROM orders
-		WHERE market_uuid = $1 AND status 
+		WHERE market_uuid = $1 ORDER BY created_at ASC 
 	`)
 	if err != nil {
 		return &serverError{err, "could not prepare stmt"}
@@ -156,7 +156,6 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 
 	if order.Price == nil || !(*order.Price >= money.Satoshi) || !(*order.Price <= money.Bitcoin*1000) {
 		return writeError(w, errInputValidation)
-		fmt.Println(order)
 	}
 
 	tx, err := db.Begin()
