@@ -7,6 +7,7 @@ import (
 	"github.com/bitnel/bitnel-api/money"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"net/http"
 )
 
@@ -84,7 +85,7 @@ func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	stmt, err := db.Prepare(`
 		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
 		FROM orders
-		WHERE market_uuid = $1 ORDER BY created_at ASC 
+		WHERE market_uuid = $1 ORDER BY created_at DESC 
 	`)
 	if err != nil {
 		return &serverError{err, "could not prepare stmt"}

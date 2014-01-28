@@ -15,7 +15,6 @@ func router() *mux.Router {
 	//su := r.PathPrefix("/users").Subrouter()
 	r.Handle("/users", apiHandler(createUserHandler)).Methods("POST")
 	r.Handle("/users", apiHandler(updateUserHandler)).Methods("PUT")
-
 	// /markets/btcusd/orders
 	sm := r.PathPrefix("/markets").Subrouter()
 	sm.Handle("/{currencyPair}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, marketFinder))).Methods("GET")
