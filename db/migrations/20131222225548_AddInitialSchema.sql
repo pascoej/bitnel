@@ -8,6 +8,8 @@ CREATE TABLE users (
     created_at timestamptz NOT NULL DEFAULT NOW()
 );
 
+CREATE TYPE order_side AS ENUM('bid', 'ask');
+
 CREATE TABLE orders (
     uuid uuid NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
     size bigint NOT NULL,
@@ -15,7 +17,6 @@ CREATE TABLE orders (
     price bigint,
     side smallint NOT NULL,
     status smallint NOT NULL,
-    type smallint NOT NULL,
     created_at timestamptz NOT NULL DEFAULT NOW()
 );
 

@@ -8,53 +8,53 @@ import (
 	"time"
 )
 
-// Order type defines the order's type. Currently the exchange only supports
-// market and limit orders.
-type OrderType int
+// // Order type defines the order's type. Currently the exchange only supports
+// // market and limit orders.
+// type OrderType int
 
-const (
-	// marketOrder is defined as 0
-	MarketOrder OrderType = iota
+// const (
+// 	// marketOrder is defined as 0
+// 	MarketOrder OrderType = iota
 
-	// limitOrder is defined as 1
-	LimitOrder
-)
+// 	// limitOrder is defined as 1
+// 	LimitOrder
+// )
 
-func (x OrderType) String() string {
-	switch x {
-	case MarketOrder:
-		return "market"
-	case LimitOrder:
-		return "limit"
-	}
+// func (x OrderType) String() string {
+// 	switch x {
+// 	case MarketOrder:
+// 		return "market"
+// 	case LimitOrder:
+// 		return "limit"
+// 	}
 
-	return ""
-}
+// 	return ""
+// }
 
-func ParseOrderType(s string) (OrderType, error) {
-	switch s {
-	case MarketOrder.String():
-		return MarketOrder, nil
-	case LimitOrder.String():
-		return LimitOrder, nil
-	default:
-		// 0 because underlying type of OrderType is int, and int "zero value" is 0
-		return 0, errors.New("model: invalid OrderType " + s)
-	}
-}
+// func ParseOrderType(s string) (OrderType, error) {
+// 	switch s {
+// 	case MarketOrder.String():
+// 		return MarketOrder, nil
+// 	case LimitOrder.String():
+// 		return LimitOrder, nil
+// 	default:
+// 		// 0 because underlying type of OrderType is int, and int "zero value" is 0
+// 		return 0, errors.New("model: invalid OrderType " + s)
+// 	}
+// }
 
-func (x OrderType) MarshalJSON() ([]byte, error) {
-	return []byte("\"" + x.String() + "\""), nil
-}
+// func (x OrderType) MarshalJSON() ([]byte, error) {
+// 	return []byte("\"" + x.String() + "\""), nil
+// }
 
-func (x *OrderType) UnmarshalJSON(b []byte) error {
-	var err error
-	if *x, err = ParseOrderType(string(b[1 : len(b)-1])); err != nil {
-		return err
-	}
+// func (x *OrderType) UnmarshalJSON(b []byte) error {
+// 	var err error
+// 	if *x, err = ParseOrderType(string(b[1 : len(b)-1])); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // Order side defines the side which an order lies. For example a buy order
 // would mean the order is on the bid side.
@@ -180,6 +180,7 @@ type Order struct {
 	Price       *money.Unit `json:"price"`
 	Side        *OrderSide  `json:"side"`
 	Status      OrderStatus `json:"status"`
-	Type        *OrderType  `json:"type"`
 	CreatedAt   time.Time   `json:"created_at"`
+
+	// Type        *OrderType  `json:"type"`
 }

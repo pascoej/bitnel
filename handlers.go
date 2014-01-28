@@ -82,7 +82,7 @@ func deleteOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 // Lists orders associated with a market
 func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	stmt, err := db.Prepare(`
-		SELECT uuid, market_uuid, size, initial_size, price, side, status, type, created_at
+		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
 		FROM orders
 		WHERE market_uuid = $1 AND status 
 	`)
@@ -97,15 +97,9 @@ func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 
 	var orders []*model.Order
 
-	fmt.Println("yay")
-
 	for rows.Next() {
 		var order model.Order
-		if err := rows.Scan(&order.Uuid, &order.MarketUuid, &order.Size, &order.InitialSize, &order.Price, &order.Side, &order.Status, &order.Type, &order.CreatedAt); err != nil {
-			return &serverError{err, "error somewhere"}
-		}
-
-		fmt.Println(order)
+		err = rows.Scan(&order.Uuid, &order.MarketUuid, &order.Size, &order.InitialSize, &order.Price, &order.Side, &order.Status, &order.CreatedAt)
 
 		orders = append(orders, &order)
 	}
@@ -121,7 +115,7 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	orderUuid := mux.Vars(r)["orderUuid"]
 
 	stmt, err := db.Prepare(`
-		SELECT uuid, market_uuid, size, initial_size, price, side, status, type, created_at
+		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
 		FROM orders
 		WHERE uuid = $1
 	`)
@@ -136,7 +130,6 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		&order.InitialSize,
 		&order.Price, order.Side,
 		&order.Status,
-		&order.Type,
 		&order.CreatedAt)
 	if err != nil {
 		return &serverError{err, "could not get order values"}
@@ -161,28 +154,22 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		return writeError(w, errInputValidation)
 	}
 
-	if order.Type == nil && (*order.Type != model.MarketOrder || *order.Type != model.LimitOrder) {
+	if order.Price == nil || !(*order.Price >= money.Satoshi) || !(*order.Price <= money.Bitcoin*1000) {
 		return writeError(w, errInputValidation)
+		fmt.Println(order)
 	}
+
+	fmt.Println(order)
 
 	tx, err := db.Begin()
 	if err != nil {
 		return &serverError{err, "cannot begin tx"}
 	}
 
-	switch *order.Type {
-	case model.MarketOrder:
-		order.Price = nil
-	case model.LimitOrder:
-		if order.Price == nil || !(*order.Price >= money.Satoshi) || !(*order.Size <= money.Bitcoin*1000) {
-			return writeError(w, errInputValidation)
-		}
-	}
-
 	stmt, err := tx.Prepare(`
-		INSERT INTO orders (market_uuid, size, initial_size, price, side, status, type)
+		INSERT INTO orders (market_uuid, size, initial_size, price, side, status)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING uuid, market_uuid, size, initial_size, price, side, status, type, created_at
+		RETURNING uuid, market_uuid, size, initial_size, price, side, status, created_at
 	`)
 	if err != nil {
 		return &serverError{err, "error"}
@@ -195,7 +182,6 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		order.Price,
 		order.Side,
 		order.Status,
-		order.Type,
 	).Scan(
 		&order.Uuid,
 		&order.MarketUuid,
@@ -204,7 +190,6 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		&order.Price,
 		&order.Side,
 		&order.Status,
-		&order.Type,
 		&order.CreatedAt,
 	)
 
@@ -216,7 +201,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		return &serverError{err, "tx commit err"}
 	}
 
-	globalMatchingEngine.add(order)
+	globalMatchingEngine.Add(&order)
 
 	return writeJson(w, order)
 }
