@@ -53,18 +53,17 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	if err != nil {
 		return &matchingError{o}
 	}
-
 	var stmt *sql.Stmt
 
 	// maybe have more orders later on
 
 	if *o.Side == model.BidSide {
-		stmt, err = tx.Prepare(`SELECT uuid, price, size FROM orders
-			WHERE status = $1 OR status = $2 OR status = $3 AND side = $3 AND price <= $4
+		stmt, err = tx.Prepare(`SELECT uuid, price, size, initial_size FROM orders
+			WHERE status = $1 OR status = $2 AND side = $3 AND price <= $4
 			ORDER BY price ASC, created_at ASC`)
 	} else {
-		stmt, err = tx.Prepare(`SELECT uuid, price, size FROM orders
-			WHERE status = $1 OR status = $2 OR status = $3 AND side = $3 AND price >= $4
+		stmt, err = tx.Prepare(`SELECT uuid, price, size,initial_size FROM orders
+			WHERE status = $1 OR status = $2  AND side = $3 AND price >= $4
 			ORDER BY price ASC, created_at ASC`)
 	}
 
@@ -72,18 +71,11 @@ func (m *Engine) match(o *model.Order) *matchingError {
 		return &matchingError{o}
 	}
 
-	rows, err := stmt.Query(model.OpenStatus, model.PendingStatus, model.PartiallyFilledStatus, (*o.Side).CounterSide(), o.Price)
+	rows, err := stmt.Query(model.OpenStatus, model.PartiallyFilledStatus, (*o.Side).CounterSide(), o.Price)
 	if err != nil {
 		return &matchingError{o}
 	}
-
-	stmt, err = tx.Prepare(`UPDATE orders
-		SET size = $1, status = $2
-		WHERE uuid = $2`)
-	if err != nil {
-		return &matchingError{o}
-	}
-
+	var counterOrders []model.Order
 	// Keep matching until no more orders
 	for rows.Next() && *o.Size > money.Unit(0) {
 		var counterOrder model.Order
@@ -91,45 +83,44 @@ func (m *Engine) match(o *model.Order) *matchingError {
 		if err != nil {
 			return &matchingError{o}
 		}
-
-		// matched order eats counter order
 		if *o.Size > *counterOrder.Size {
 			*counterOrder.Size = money.Unit(0)
 			counterOrder.Status = model.CompletedStatus
 
 			o.Status = model.PartiallyFilledStatus
 			*o.Size = *o.Size - *counterOrder.Size
-
-			// update counterOrder
-			_, err = stmt.Exec(*counterOrder.Size, counterOrder.Status, counterOrder.Uuid)
-			if err != nil {
-				return &matchingError{o}
-			}
 		} else { // matched order gets totally filled
-			*o.Size = money.Unit(0)
 			o.Status = model.CompletedStatus
-
+			counterOrder.Status = model.PartiallyFilledStatus
 			// however
 			if *counterOrder.Size = *counterOrder.Size - *o.Size; *counterOrder.Size == money.Unit(0) {
 				counterOrder.Status = model.CompletedStatus
-
-				_, err = stmt.Exec(*counterOrder.Size, counterOrder.Status, counterOrder.Uuid)
-				if err != nil {
-					return &matchingError{o}
-				}
 			}
+			*o.Size = money.Unit(0)
+		}
+		counterOrders = append(counterOrders, counterOrder)
+	}
+	rows.Close()
+	stmt, err = tx.Prepare(`UPDATE orders
+		SET size = $1, status = $2
+		WHERE uuid = $3`)
+	if err != nil {
+		return &matchingError{o}
+	}
+	for _, counterOrder := range counterOrders {
+		_, err = stmt.Exec(*counterOrder.Size, counterOrder.Status, counterOrder.Uuid)
+		if err != nil {
+			return &matchingError{o}
 		}
 	}
-
 	if *o.Size == o.InitialSize { // order did not get filled
 		o.Status = model.OpenStatus
 	}
-
 	_, err = stmt.Exec(*o.Size, o.Status, o.Uuid)
 	if err != nil {
 		return &matchingError{o}
 	}
-
+	tx.Commit()
 	return nil
 }
 

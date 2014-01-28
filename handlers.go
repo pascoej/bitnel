@@ -159,8 +159,6 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		fmt.Println(order)
 	}
 
-	fmt.Println(order)
-
 	tx, err := db.Begin()
 	if err != nil {
 		return &serverError{err, "cannot begin tx"}
@@ -168,7 +166,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO orders (market_uuid, size, initial_size, price, side, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING uuid, market_uuid, size, initial_size, price, side, status, created_at
 	`)
 	if err != nil {
