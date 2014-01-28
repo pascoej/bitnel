@@ -1,5 +1,4 @@
 bitnel-api
 db/dbconf.yml
 config.json
-tmp
-.gitignore
+tmp/
