@@ -7,7 +7,6 @@ import (
 	"github.com/bitnel/bitnel-api/money"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 	"net/http"
 )
 
@@ -60,8 +59,7 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		return &serverError{err, "could not prepare tx"}
 	}
 
-	err = stmt.QueryRow(*user.Email, user.PasswordHash).Scan(&user.Uuid, &user.Email, &user.CreatedAt)
-	if err != nil {
+	if err = stmt.QueryRow(user.Email, user.PasswordHash).Scan(&user.Uuid, &user.Email, &user.CreatedAt); err != nil {
 		return &serverError{err, "could not insert"}
 	}
 
@@ -95,17 +93,18 @@ func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if err != nil {
 		return &serverError{err, "could not query"}
 	}
+	defer rows.Close()
 
 	var orders []*model.Order
 
 	for rows.Next() {
 		var order model.Order
 		err = rows.Scan(&order.Uuid, &order.MarketUuid, &order.Size, &order.InitialSize, &order.Price, &order.Side, &order.Status, &order.CreatedAt)
+		if err != nil {
+			return &serverError{err, "error somewhere"}
+		}
 
 		orders = append(orders, &order)
-	}
-	if err := rows.Err(); err != nil {
-		return &serverError{err, "error somewhere"}
 	}
 
 	return writeJson(w, orders)
