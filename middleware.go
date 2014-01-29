@@ -33,7 +33,7 @@ func marketFinder(fn apiHandler) apiHandler {
 
 		switch {
 		case err == sql.ErrNoRows:
-			return writeError(w, errInputValidation)
+			return writeError(w, errAuth)
 		case err != nil:
 			return &serverError{err, "could not get rows"}
 		}
@@ -75,7 +75,5 @@ func oauthTokenUserFinder(fn apiHandler) apiHandler {
 		}
 
 		context.Set(r, userUuid, uuid)
-
-		return fn(w, r)
 	}
 }

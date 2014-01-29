@@ -8,8 +8,8 @@ import (
 type UserActivityType int
 
 type UserActivity struct {
-	Uuid      `json:"uuid"`
-	UserUuid  `json:"user_uuid"`
+	Uuid      string    `json:"uuid"`
+	UserUuid  string    `json:"user_uuid"`
 	SourceIP  net.IP    `json:"source_ip"`
 	CreatedAt time.Time `json:"created_at"`
 }

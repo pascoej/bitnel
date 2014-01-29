@@ -20,8 +20,8 @@ func router() *mux.Router {
 	oauthr.Handle("/token", apiHandler(oauthTokenHandler)).Methods("POST")
 
 	sm := r.PathPrefix("/markets").Subrouter()
-	sm.Handle("/{currencyPair}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, marketFinder))).Methods("GET")
-	sm.Handle("/{currencyPair}/orders", apiHandler(useMiddleware(createOrderHandler, marketFinder))).Methods("POST")
+	sm.Handle("/{currencyPair}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, marketFinder, sessionFinder))).Methods("GET")
+	sm.Handle("/{currencyPair}/orders", apiHandler(useMiddleware(createOrderHandler, marketFinder, sessionFinder))).Methods("POST")
 	sm.Handle("/{currencyPair}/orders", apiHandler(useMiddleware(listOrderHandler, marketFinder))).Methods("GET")
 
 	r.NotFoundHandler = http.Handler(apiHandler(notFoundHandler))

@@ -26,7 +26,7 @@ type serverError struct {
 }
 
 func (s *serverError) Error() string {
-	return fmt.Sprint("%s: %s", s.Msg, s.Err.Error())
+	return fmt.Sprint("%s: %s", s.Msg, s.Err)
 }
 
 // API error codes describe the specifics of the error. The user already knows
@@ -38,6 +38,7 @@ const (
 	errCodeServerError apiErrorCode = iota
 	errCodeInputValidation
 	errCodeNotFound
+	errCodeAuth
 )
 
 func (e apiErrorCode) String() string {
@@ -48,6 +49,8 @@ func (e apiErrorCode) String() string {
 		return "input_validation"
 	case errCodeNotFound:
 		return "not_found"
+	case errCodeAuth:
+		return "err_auth"
 	}
 
 	return ""
@@ -91,6 +94,7 @@ var (
 	errInputValidation = &apiError{errTypeRequest, errCodeInputValidation, http.StatusBadRequest, "Your input could not be validated"}
 	errServerError     = &apiError{errTypeServer, errCodeServerError, http.StatusInternalServerError, "Something went wrong on our side"}
 	errNotFound        = &apiError{errTypeRequest, errCodeNotFound, http.StatusNotFound, "We cannot find that resource"}
+	errAuth            = &apiError{errTypeRequest, errCodeAuth, http.StatusForbidden, "You are not authenticated"}
 )
 
 // `writeError` notifies the user of an API error. This calls `writeJson` too.
