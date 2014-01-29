@@ -226,3 +226,34 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	}
 	return writeJson(w, order)
 }
+
+func createSessionHandler(w http.ResponseWriter, r *http.Request) *serverError {
+	var user *model.User
+
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		return &serverError{err, "could not decode input createOrderHandler"}
+	}
+
+	if user.Email == nil {
+		return writeError(w, errInputValidation)
+	}
+
+	if user.Password == nil {
+		return writeError(w, errInputValidation)
+	}
+
+	user.HashPassword(appConfig.BcryptCost)
+
+	stmt, err := db.Prepare(`SELECT EXISTS (
+		SELECT 1 FROM users
+		WHERE email=$1 AND password_hash = $2)`)
+	if err != nil {
+		return &serverError{err, "dfd"}
+	}
+
+	var exists bool
+
+	if err = stmt.QueryRow(user.Email, user.PasswordHash).Scan(&exists); err != nil {
+		return &serverError{err, "err"}
+	}
+}

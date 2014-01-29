@@ -1,7 +1,5 @@
 package model
 
-/*
-
 import (
 	"time"
 	""
@@ -10,8 +8,6 @@ import (
 type Session struct {
 	Uuid      string
 	Token     string
-	LoggedInFrom
 	CreatedAt time.Time
 	ExpiresAt time.Time
 }
-*/
