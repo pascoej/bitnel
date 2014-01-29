@@ -7,6 +7,7 @@ import (
 	"github.com/bitnel/bitnel-api/money"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
+	"time"
 	//"github.com/gorilla/websocket"
 	"net/http"
 )
@@ -228,7 +229,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 }
 
 func createSessionHandler(w http.ResponseWriter, r *http.Request) *serverError {
-	var user *model.User
+	var user model.User
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		return &serverError{err, "could not decode input createOrderHandler"}
@@ -241,19 +242,25 @@ func createSessionHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if user.Password == nil {
 		return writeError(w, errInputValidation)
 	}
-
-	user.HashPassword(appConfig.BcryptCost)
-
-	stmt, err := db.Prepare(`SELECT EXISTS (
-		SELECT 1 FROM users
-		WHERE email=$1 AND password_hash = $2)`)
+	stmt, err := db.Prepare(`SELECT password_hash FROM users WHERE email = $1`)
 	if err != nil {
 		return &serverError{err, "dfd"}
 	}
 
-	var exists bool
-
-	if err = stmt.QueryRow(user.Email, user.PasswordHash).Scan(&exists); err != nil {
-		return &serverError{err, "err"}
+	if err = stmt.QueryRow(user.Email).Scan(&user.PasswordHash); err != nil {
+		return &serverError{err, "no such user"}
 	}
+	if !user.ComparePassword(*user.Password) {
+		return writeError(w, errNotFound)
+	}
+	stmt, err = db.Prepare(`INSERT INTO sessions (user_uuid, expires_at) VALUES((SELECT uuid FROM users WHERE email = $1),$2) RETURNING uuid,user_uuid,token,created_at,expires_at`)
+	if err != nil {
+		return &serverError{err, "err preparing"}
+	}
+	var session model.Session
+	if err := stmt.QueryRow(user.Email, time.Now().Add(time.Hour*24*3)).Scan(&session.Uuid, &session.UserUuid, &session.Token, &session.CreatedAt, &session.ExpiresAt); err != nil {
+		return &serverError{err, "err creating token"}
+	}
+
+	return writeJson(w, session)
 }
