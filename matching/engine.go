@@ -56,21 +56,21 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	var stmt *sql.Stmt
 
 	// maybe have more orders later on
-
 	if *o.Side == model.BidSide {
-		stmt, err = tx.Prepare(`SELECT uuid, price, size, initial_size FROM orders
-			WHERE status = $1 OR status = $2 AND side = $3 AND price <= $4
+		stmt, err = tx.Prepare(`SELECT uuid, price, size, initial_size, status, side FROM orders
+			WHERE (status = $1 OR status = $2) AND side = $3 AND price <= $4
 			ORDER BY price ASC, created_at ASC`)
+	} else if *o.Side == model.AskSide {
+		stmt, err = tx.Prepare(`SELECT uuid, price, size,initial_size, status, side FROM orders
+			WHERE (status = $1 OR status = $2) AND side = $3 AND price >= $4
+			ORDER BY price DESC, created_at ASC`)
 	} else {
-		stmt, err = tx.Prepare(`SELECT uuid, price, size,initial_size FROM orders
-			WHERE status = $1 OR status = $2  AND side = $3 AND price >= $4
-			ORDER BY price ASC, created_at ASC`)
+		return &matchingError{o}
 	}
 
 	if err != nil {
 		return &matchingError{o}
 	}
-
 	rows, err := stmt.Query(model.OpenStatus, model.PartiallyFilledStatus, (*o.Side).CounterSide(), o.Price)
 	if err != nil {
 		return &matchingError{o}
@@ -79,7 +79,7 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	// Keep matching until no more orders
 	for rows.Next() && *o.Size > money.Unit(0) {
 		var counterOrder model.Order
-		err = rows.Scan(&counterOrder.Uuid, &counterOrder.Price, &counterOrder.Size, &counterOrder.InitialSize)
+		err = rows.Scan(&counterOrder.Uuid, &counterOrder.Price, &counterOrder.Size, &counterOrder.InitialSize, &counterOrder.Status, &counterOrder.Side)
 		if err != nil {
 			return &matchingError{o}
 		}

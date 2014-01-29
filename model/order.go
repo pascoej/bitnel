@@ -95,7 +95,6 @@ func (x OrderSide) CounterSide() OrderSide {
 	if x == BidSide {
 		return AskSide
 	}
-
 	return BidSide
 }
 
