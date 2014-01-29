@@ -7,7 +7,7 @@ import (
 	"github.com/bitnel/bitnel-api/money"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	//"github.com/gorilla/websocket"
+	"github.com/gorilla/websocket"
 	"net/http"
 )
 
@@ -23,36 +23,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) *serverError {
 func notFoundHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	return writeError(w, errNotFound)
 }
-func createUser(user model.User) (*serverError, model.User) {
-
-	if err := user.HashPassword(appConfig.BcryptCost); err != nil {
-		return &serverError{err, "could not hash user pw"}, user
-	}
-
-	user.Password = nil
-
-	tx, err := db.Begin()
-	if err != nil {
-		return &serverError{err, "could not begin tx"}, user
-	}
-
-	stmt, err := tx.Prepare(`
-		INSERT INTO users (email, password_hash)
-		VALUES ($1, $2)
-		RETURNING uuid, email, created_at
-	`)
-	if err != nil {
-		return &serverError{err, "could not prepare tx"}, user
-	}
-
-	err = stmt.QueryRow(*user.Email, user.PasswordHash).Scan(&user.Uuid, &user.Email, &user.CreatedAt)
-	if err != nil {
-		return &serverError{err, "could not insert"}, user
-	}
-
-	err = tx.Commit()
-	return nil, user
-}
 
 // Handles user creation
 func createUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
@@ -61,6 +31,7 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		return &serverError{err, "can't decode req"}
 	}
+
 	if user.Email == nil || !(len(*user.Email) >= 3) || !(len(*user.Email) <= 256) {
 		return writeError(w, errInputValidation)
 	}
@@ -68,10 +39,34 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if user.Password == nil || !(len(*user.Password) >= 6) || !(len(*user.Password) <= 258) {
 		return writeError(w, errInputValidation)
 	}
-	err, user := createUser(user)
-	if err != nil {
-		return err
+
+	if err := user.HashPassword(appConfig.BcryptCost); err != nil {
+		return &serverError{err, "could not hash user pw"}
 	}
+
+	user.Password = nil
+
+	tx, err := db.Begin()
+	if err != nil {
+		return &serverError{err, "could not begin tx"}
+	}
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO users (email, password_hash)
+		VALUES ($1, $2)
+		RETURNING uuid, email, created_at
+	`)
+	if err != nil {
+		return &serverError{err, "could not prepare tx"}
+	}
+
+	err = stmt.QueryRow(*user.Email, user.PasswordHash).Scan(&user.Uuid, &user.Email, &user.CreatedAt)
+	if err != nil {
+		return &serverError{err, "could not insert"}
+	}
+
+	err = tx.Commit()
+
 	return writeJson(w, user)
 }
 
@@ -84,19 +79,21 @@ func updateUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
 func deleteOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
 }
-func listOrders(marketUuid interface{}) (*serverError, []*model.Order) {
+
+// Lists orders associated with a market
+func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	stmt, err := db.Prepare(`
 		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
 		FROM orders
 		WHERE market_uuid = $1 ORDER BY created_at DESC 
 	`)
 	if err != nil {
-		return &serverError{err, "could not prepare stmt"}, nil
+		return &serverError{err, "could not prepare stmt"}
 	}
 
-	rows, err := stmt.Query(marketUuid)
+	rows, err := stmt.Query(context.Get(r, marketUuid))
 	if err != nil {
-		return &serverError{err, "could not query"}, nil
+		return &serverError{err, "could not query"}
 	}
 
 	var orders []*model.Order
@@ -108,59 +105,63 @@ func listOrders(marketUuid interface{}) (*serverError, []*model.Order) {
 		orders = append(orders, &order)
 	}
 	if err := rows.Err(); err != nil {
-		return &serverError{err, "error somewhere"}, nil
+		return &serverError{err, "error somewhere"}
 	}
-	return nil, orders
-}
 
-// Lists orders associated with a market
-func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
-	err, orders := listOrders(context.Get(r, marketUuid))
-	if err != nil {
-		return err
-	}
 	return writeJson(w, orders)
 }
-func getOrder(uuid string) (*serverError, *model.Order) {
+
+// Handles getting the information of an order
+func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
+	orderUuid := mux.Vars(r)["orderUuid"]
+
 	stmt, err := db.Prepare(`
 		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
 		FROM orders
 		WHERE uuid = $1
 	`)
 	if err != nil {
-		return &serverError{err, "could not prepare stmt"}, nil
+		return &serverError{err, "could not prepare stmt"}
 	}
 
 	var order model.Order
-	err = stmt.QueryRow(uuid).Scan(
+	err = stmt.QueryRow(orderUuid).Scan(
 		&order.Uuid,
-		&order.MarketUuid,
 		&order.Size,
 		&order.InitialSize,
-		&order.Price,
-		&order.Side,
+		&order.Price, order.Side,
 		&order.Status,
 		&order.CreatedAt)
 	if err != nil {
-		return &serverError{err, "could not get order values"}, nil
+		return &serverError{err, "could not get order values"}
 	}
-	return nil, &order
 
-}
-
-// Handles getting the information of an order
-func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
-	orderUuid := mux.Vars(r)["orderUuid"]
-	err, order := getOrder(orderUuid)
-	if err != nil {
-		return err
-	}
 	return writeJson(w, order)
 }
-func createOrder(marketUuid interface{}, order *model.Order) (*serverError, *model.Order) {
+
+// Handles the creation of an order
+func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
+	var order model.Order
+
+	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
+		return &serverError{err, "could not decode input createOrderHandler"}
+	}
+
+	if order.Size == nil || !(*order.Size >= money.Satoshi) || !(*order.Size <= money.Bitcoin*1000) {
+		return writeError(w, errInputValidation)
+	}
+
+	if order.Side == nil && (*order.Side != model.AskSide || *order.Side != model.BidSide) {
+		return writeError(w, errInputValidation)
+	}
+
+	if order.Price == nil || !(*order.Price >= money.Satoshi) || !(*order.Price <= money.Bitcoin*1000) {
+		return writeError(w, errInputValidation)
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
-		return &serverError{err, "cannot begin tx"}, nil
+		return &serverError{err, "cannot begin tx"}
 	}
 
 	stmt, err := tx.Prepare(`
@@ -169,11 +170,11 @@ func createOrder(marketUuid interface{}, order *model.Order) (*serverError, *mod
 		RETURNING uuid, market_uuid, size, initial_size, price, side, status, created_at
 	`)
 	if err != nil {
-		return &serverError{err, "error"}, nil
+		return &serverError{err, "error"}
 	}
 
 	err = stmt.QueryRow(
-		marketUuid,
+		context.Get(r, marketUuid),
 		order.Size,
 		order.Size,
 		order.Price,
@@ -191,38 +192,14 @@ func createOrder(marketUuid interface{}, order *model.Order) (*serverError, *mod
 	)
 
 	if err != nil {
-		return &serverError{err, "err scanning columns"}, nil
+		return &serverError{err, "lol"}
 	}
 
 	if err = tx.Commit(); err != nil {
-		return &serverError{err, "tx commit err"}, nil
-	}
-	globalMatchingEngine.Add(order)
-	return nil, order
-}
-
-// Handles the creation of an order
-func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
-	var order *model.Order
-
-	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
-		return &serverError{err, "could not decode input createOrderHandler"}
+		return &serverError{err, "tx commit err"}
 	}
 
-	if order.Size == nil || !(*order.Size >= money.Satoshi) || !(*order.Size <= money.Bitcoin*1000) {
-		return writeError(w, errInputValidation)
-	}
+	globalMatchingEngine.Add(&order)
 
-	if order.Side == nil && (*order.Side != model.AskSide || *order.Side != model.BidSide) {
-		return writeError(w, errInputValidation)
-	}
-
-	if order.Price == nil || !(*order.Price >= money.Satoshi) || !(*order.Price <= money.Bitcoin*1000) {
-		return writeError(w, errInputValidation)
-	}
-	err, order := createOrder(context.Get(r, marketUuid), order)
-	if err != nil {
-		return err
-	}
 	return writeJson(w, order)
 }
