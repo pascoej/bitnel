@@ -19,6 +19,10 @@ func (me *matchingError) Error() string {
 	return fmt.Sprintf("matching: unable to match order uuid %s", me.order.Uuid)
 }
 
+const (
+	feeFraction = 0.02
+)
+
 type Engine struct {
 	orderNotifier chan *model.Order
 	database      *sql.DB
@@ -78,18 +82,33 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	}
 
 	var counterOrders []model.Order
-
+	var trades map[string]model.Trade = make(map[string]model.Trade) // The counter order uuid is the key
 	for rows.Next() && *o.Size > money.Unit(0) {
 		var counterOrder model.Order
 		err = rows.Scan(&counterOrder.Uuid, &counterOrder.Price, &counterOrder.Size, &counterOrder.InitialSize, &counterOrder.Status, &counterOrder.Side)
 		if err != nil {
 			return &matchingError{o}
 		}
-
+		var price money.Unit
+		if *o.Side == model.AskSide {
+			if *counterOrder.Price > *o.Price {
+				price = *counterOrder.Price
+			} else {
+				price = *o.Price
+			}
+		} else {
+			if *counterOrder.Price < *o.Price {
+				price = *counterOrder.Price
+			} else {
+				price = *o.Price
+			}
+		}
+		var trade model.Trade
+		var amount money.Unit
 		if *o.Size > *counterOrder.Size {
 			counterOrder.Status = model.CompletedStatus
 			o.Status = model.PartiallyFilledStatus
-
+			amount = *counterOrder.Size
 			*o.Size = *o.Size - *counterOrder.Size
 			*counterOrder.Size = money.Unit(0)
 		} else { // matched order gets totally filled
@@ -99,32 +118,69 @@ func (m *Engine) match(o *model.Order) *matchingError {
 			if *counterOrder.Size = *counterOrder.Size - *o.Size; *counterOrder.Size == money.Unit(0) {
 				counterOrder.Status = model.CompletedStatus
 			}
+			amount = *o.Size
 			*o.Size = money.Unit(0)
 		}
-
+		trade.Amount = amount
+		trade.Price = price
+		trades[counterOrder.Uuid] = trade
 		counterOrders = append(counterOrders, counterOrder)
 	}
 	rows.Close()
 
-	stmt, err = tx.Prepare(`UPDATE orders
+	orderStmt, err := tx.Prepare(`UPDATE orders
 		SET size = $1, status = $2
 		WHERE uuid = $3`)
 	if err != nil {
 		return &matchingError{o}
 	}
-
+	tradeStmt, err := tx.Prepare(`INSERT INTO trades (amount,price) RETURNING uuid`)
+	if err != nil {
+		return &matchingError{o}
+	}
+	transactionStmt, err := tx.Prepare(`INSERT INTO transactions (balance_uuid,type,amount,fee_amount, trade)  VALUES($1,$2,$3,$4,$5)`)
+	if err != nil {
+		return &matchingError{o}
+	}
+	balanceStmt, err := tx.Prepare(`UPDATE balances SET reserved_balance = reserved_balance+$1 WHERE user_uuid = $2 AND currency = $3 RETURNING uuid`)
+	if err != nil {
+		return &matchingError{o}
+	}
+	var market model.Market
+	marketStmt, err := tx.Prepare(`SELECT base_currency,quote_currency,currency_pair FROM markets WHERE uuid = $1`)
+	if err != nil {
+		return &matchingError{o}
+	}
+	if err = marketStmt.QueryRow(o.MarketUuid).Scan(&market.BaseCurrency, &market.QuoteCurrency, &market.CurrencyPair); err != nil {
+		return &matchingError{o}
+	}
 	for _, counterOrder := range counterOrders {
-		_, err = stmt.Exec(*counterOrder.Size, counterOrder.Status, counterOrder.Uuid)
+		_, err = orderStmt.Exec(*counterOrder.Size, counterOrder.Status, counterOrder.Uuid)
 		if err != nil {
 			return &matchingError{o}
 		}
+		trade := trades[counterOrder.Uuid]
+		if err = tradeStmt.QueryRow(trade.Amount, trade.Price).Scan(&trade.Uuid); err != nil {
+			return &matchingError{o}
+		}
+		var transaction model.Transaction
+		if *counterOrder.Side == model.AskSide {
+			transaction.Amount = trade.Amount * trade.Price
+		} else {
+			transaction.Amount = -1 * trade.Amount * trade.Price
+		}
+		transaction.Type = model.TradeTransaction
+		transaction.Trade = &counterOrder.Uuid
+		transaction.FeeAmount = (transaction.Amount / (1 / feeFraction))
+		transactionStmt.QueryRow(transaction.GetTotalAmount())
+		transactionStmt.Exec()
 	}
 
 	if *o.Size == o.InitialSize { // order did not get filled
 		o.Status = model.OpenStatus
 	}
 
-	_, err = stmt.Exec(*o.Size, o.Status, o.Uuid)
+	_, err = orderStmt.Exec(*o.Size, o.Status, o.Uuid)
 	if err != nil {
 		return &matchingError{o}
 	}

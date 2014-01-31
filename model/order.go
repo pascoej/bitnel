@@ -180,6 +180,7 @@ type Order struct {
 	Side        *OrderSide  `json:"side"`
 	Status      OrderStatus `json:"status"`
 	CreatedAt   time.Time   `json:"created_at"`
+	AccountUuid *string     `json:"-"`
 
 	// Type        *OrderType  `json:"type"`
 }

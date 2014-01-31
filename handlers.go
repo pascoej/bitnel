@@ -159,46 +159,7 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	return writeJson(w, order)
 }
 func createOrder(marketUuid interface{}, order *model.Order) (*serverError, *model.Order) {
-	tx, err := db.Begin()
-	if err != nil {
-		return &serverError{err, "cannot begin tx"}, nil
-	}
-
-	stmt, err := tx.Prepare(`
-		INSERT INTO orders (market_uuid, size, initial_size, price, side, status)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING uuid, market_uuid, size, initial_size, price, side, status, created_at
-	`)
-	if err != nil {
-		return &serverError{err, "error"}, nil
-	}
-
-	err = stmt.QueryRow(
-		marketUuid,
-		order.Size,
-		order.Size,
-		order.Price,
-		order.Side,
-		order.Status,
-	).Scan(
-		&order.Uuid,
-		&order.MarketUuid,
-		&order.Size,
-		&order.InitialSize,
-		&order.Price,
-		&order.Side,
-		&order.Status,
-		&order.CreatedAt,
-	)
-
-	if err != nil {
-		return &serverError{err, "err scanning columns"}, nil
-	}
-
-	if err = tx.Commit(); err != nil {
-		return &serverError{err, "tx commit err"}, nil
-	}
-	globalMatchingEngine.Add(order)
+	t
 	return nil, order
 }
 
@@ -221,10 +182,50 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if order.Price == nil || !(*order.Price >= money.Satoshi) || !(*order.Price <= money.Bitcoin*1000) {
 		return writeError(w, errInputValidation)
 	}
-	err, order := createOrder(context.Get(r, marketUuid), order)
 	if err != nil {
 		return err
 	}
+	tx, err := db.Begin()
+	if err != nil {
+		return &serverError{err, "cannot begin tx"}
+	}
+	stmt, err := tx.Prepare(`
+		INSERT INTO orders (market_uuid, size, initial_size, price, side, status, account_uuid)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING uuid, market_uuid, size, initial_size, price, side, status, created_at,account_uuid
+	`)
+	if err != nil {
+		return &serverError{err, "error"}
+	}
+
+	err = stmt.QueryRow(
+		marketUuid,
+		order.Size,
+		order.Size,
+		order.Price,
+		order.Side,
+		order.Status,
+		context.Get(r, AccountUuid)
+	).Scan(
+		&order.Uuid,
+		&order.MarketUuid,
+		&order.Size,
+		&order.InitialSize,
+		&order.Price,
+		&order.Side,
+		&order.Status,
+		&order.CreatedAt,
+		&order.AccountUuid,
+	)
+
+	if err != nil {
+		return &serverError{err, "err scanning columns"}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return &serverError{err, "tx commit err"}
+	}
+	globalMatchingEngine.Add(order)
 	return writeJson(w, order)
 }
 
