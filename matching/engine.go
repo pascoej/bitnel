@@ -142,7 +142,11 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	if err != nil {
 		return &matchingError{o}
 	}
-	balanceStmt, err := tx.Prepare(`UPDATE balances SET reserved_balance = reserved_balance+$1 WHERE user_uuid = $2 AND currency = $3 RETURNING uuid`)
+	reservedBalanceStmt, err := tx.Prepare(`UPDATE balances SET reserved_balance = reserved_balance+$1 WHERE user_uuid = $2 AND currency = $3 RETURNING uuid`)
+	if err != nil {
+		return &matchingError{o}
+	}
+	balanceStmt, err := tx.Prepare(`UPDATE balances SET balance = balance+$1 WHERE user_uuid = $2 AND currency = $3 RETURNING uuid`)
 	if err != nil {
 		return &matchingError{o}
 	}
@@ -172,8 +176,31 @@ func (m *Engine) match(o *model.Order) *matchingError {
 		transaction.Type = model.TradeTransaction
 		transaction.Trade = &counterOrder.Uuid
 		transaction.FeeAmount = (transaction.Amount / (1 / feeFraction))
-		transactionStmt.QueryRow(transaction.GetTotalAmount())
-		transactionStmt.Exec()
+		var buyerAccountUuid string
+		var sellerAccountUuid string
+		if *o.Side == model.AskSide {
+			sellerAccountUuid = *o.AccountUuid
+			buyerAccountUuid = *counterOrder.AccountUuid
+		} else {
+			sellerAccountUuid = *counterOrder.AccountUuid
+			buyerAccountUuid = *o.AccountUuid
+		}
+		var sellerBalance model.Balance
+		if err = balanceStmt.QueryRow(transaction.Amount, sellerAccountUuid, market.QuoteCurrency).Scan(&sellerBalance.Uuid); err != nil {
+			return &matchingError{o}
+		}
+		_, err := transactionStmt.Exec(sellerBalance.Uuid, model.TradeTransaction, transaction.Amount, transaction.FeeAmount, trade.Uuid)
+		if err != nil {
+			return &matchingError{o}
+		}
+		var buyerBalance model.Balance
+		if err = reservedBalanceStmt.QueryRow(transaction.GetTotalAmount(), buyerAccountUuid, market.BaseCurrency).Scan(&buyerBalance.Uuid); err != nil {
+			return &matchingError{o}
+		}
+		_, err = transactionStmt.Exec(buyerBalance.Uuid, model.TradeTransaction, transaction.Amount, transaction.FeeAmount, trade.Uuid)
+		if err != nil {
+			return &matchingError{o}
+		}
 	}
 
 	if *o.Size == o.InitialSize { // order did not get filled

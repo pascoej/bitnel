@@ -159,7 +159,6 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	return writeJson(w, order)
 }
 func createOrder(marketUuid interface{}, order *model.Order) (*serverError, *model.Order) {
-	t
 	return nil, order
 }
 
@@ -182,9 +181,6 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if order.Price == nil || !(*order.Price >= money.Satoshi) || !(*order.Price <= money.Bitcoin*1000) {
 		return writeError(w, errInputValidation)
 	}
-	if err != nil {
-		return err
-	}
 	tx, err := db.Begin()
 	if err != nil {
 		return &serverError{err, "cannot begin tx"}
@@ -205,7 +201,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		order.Price,
 		order.Side,
 		order.Status,
-		context.Get(r, AccountUuid)
+		context.Get(r, userUuid),
 	).Scan(
 		&order.Uuid,
 		&order.MarketUuid,
