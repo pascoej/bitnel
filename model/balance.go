@@ -4,7 +4,7 @@ import (
 	"github.com/bitnel/bitnel-api/money"
 )
 
-type Account struct {
+type Balance struct {
 	Uuid             string         `json:"uuid"`
 	UserUuid         string         `json:"uuid"`
 	Currency         money.Currency `json:"currency"`
@@ -12,6 +12,6 @@ type Account struct {
 	ReservedBalance  money.Unit     `json:"reserved_balance"`
 }
 
-func (a *Account) NetBalance() money.Unit {
+func (a *Balance) NetBalance() money.Unit {
 	return a.AvailableBalance + a.ReservedBalance
 }

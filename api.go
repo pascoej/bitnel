@@ -29,6 +29,8 @@ func (s *serverError) Error() string {
 	return fmt.Sprint("%s: %s", s.Msg, s.Err)
 }
 
+type AccountUuid string // for middleware
+
 // API error codes describe the specifics of the error. The user already knows
 // if the error was caused by them or us, but error codes allow the user to know
 // if the resource was `not_found` or they failed the `input_validation`.

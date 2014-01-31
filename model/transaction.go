@@ -9,8 +9,7 @@ type TransactionType int
 
 const (
 	AdjustmentTransaction TransactionType = iota
-	OutboundTransaction
-	InboundTransaction
+	TradeTransaction
 	WithdrawTransaction
 	DepositTransaction
 )
@@ -19,10 +18,8 @@ func (t TransactionType) String() string {
 	switch t {
 	case AdjustmentTransaction:
 		return "adjustment"
-	case OutboundTransaction:
-		return "out"
-	case InboundTransaction:
-		return "in"
+	case TradeTransaction:
+		return "trade"
 	case WithdrawTransaction:
 		return "deposit"
 	case DepositTransaction:
@@ -36,10 +33,8 @@ func ParseTransactionType(tt string) TransactionType {
 	switch tt {
 	case AdjustmentTransaction.String():
 		return AdjustmentTransaction
-	case OutboundTransaction.String():
-		return OutboundTransaction
-	case InboundTransaction.String():
-		return InboundTransaction
+	case TradeTransaction.String():
+		return TradeTransaction
 	case WithdrawTransaction.String():
 		return WithdrawTransaction
 	case DepositTransaction.String():
@@ -56,4 +51,9 @@ type Transaction struct {
 	Amount      money.Unit      `json:"amount"`
 	FeeAmount   money.Unit      `json:"fee_amount"`
 	CreatedAt   time.Time       `json:"created_at"`
+	Trade       *string         `json:-`
+}
+
+func (trans *Transaction) GetTotalAmount() money.Unit {
+	return trans.Amount - trans.FeeAmount
 }
