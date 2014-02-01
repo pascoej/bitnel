@@ -10,12 +10,15 @@ import (
 func router() *mux.Router {
 	r := mux.NewRouter()
 
-	r.Handle("/", apiHandler(indexHandler))
+	r.Handle("/", apiHandler(useMiddleware(indexHandler, oauthTokenUserFinder)))
 
 	//su := r.PathPrefix("/users").Subrouter()
 	r.Handle("/users", apiHandler(createUserHandler)).Methods("POST")
 	r.Handle("/users", apiHandler(updateUserHandler)).Methods("PUT")
-	// /markets/btcusd/orders
+
+	oauthr := r.PathPrefix("/oauth").Subrouter()
+	oauthr.Handle("/token", apiHandler(oauthTokenHandler)).Methods("POST")
+
 	sm := r.PathPrefix("/markets").Subrouter()
 	sm.Handle("/{currencyPair}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, marketFinder))).Methods("GET")
 	sm.Handle("/{currencyPair}/orders", apiHandler(useMiddleware(createOrderHandler, marketFinder))).Methods("POST")
