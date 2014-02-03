@@ -11,7 +11,7 @@ type oauthAccessToken struct {
 	Uuid        string    `json:"-"`
 	UserUuid    string    `json:"-"`
 	AccessToken string    `json:"access_token"`
-	ExpiresAt   int64     `json:"expires_at"`
+	ExpiresIn   int64     `json:"expires_at"`
 	CreatedAt   time.Time `json:"-"`
 }
 
@@ -19,16 +19,13 @@ func oauthTokenHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if err := r.ParseForm(); err != nil {
 		return &serverError{err, "unable to r.ParseForm()"}
 	}
-
 	if r.Form.Get("grant_type") != "password" {
 		return writeError(w, errInputValidation)
 	}
-
 	var email, password string
 	if email = r.Form.Get("username"); email == "" {
 		return writeError(w, errInputValidation)
 	}
-
 	if password = r.Form.Get("password"); password == "" {
 		return writeError(w, errInputValidation)
 	}
@@ -50,14 +47,14 @@ func oauthTokenHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	}
 
 	stmt, err = db.Prepare(`INSERT INTO oauth_tokens (user_uuid, access_token, expires_at)
-		VALUES ($1, uuid_generate_v4(), 3600
-		RETURNING access_token, expires_at`)
+		VALUES ($1, uuid_generate_v4(), NOW()+'1 day'::interval)
+		RETURNING access_token, EXTRACT(EPOCH FROM (expires_at-NOW()))`)
 	if err != nil {
 		return &serverError{err, "oauth_token insert stmt prepare error"}
 	}
 
 	var token oauthAccessToken
-	if err := stmt.QueryRow(user.Uuid).Scan(&token.AccessToken, &token.ExpiresAt); err != nil {
+	if err := stmt.QueryRow(user.Uuid).Scan(&token.AccessToken, &token.ExpiresIn); err != nil {
 		return &serverError{err, "unable to exec oauth_tokens insert"}
 	}
 

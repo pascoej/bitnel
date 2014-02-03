@@ -15,6 +15,7 @@ type contextVar int
 const (
 	marketUuid contextVar = iota
 	userUuid
+	accountUuid
 )
 
 // This middleware wraps around all handlers concerning markets.
@@ -43,6 +44,29 @@ func marketFinder(fn apiHandler) apiHandler {
 		return fn(w, r)
 	}
 }
+func accountFinder(fn apiHandler) apiHandler {
+	return func(w http.ResponseWriter, r *http.Request) *serverError {
+		uuid := mux.Vars(r)["accountUuid"]
+		requesterUserUuid := context.Get(r, userUuid)
+		stmt, err := db.Prepare(`SELECT user_uuid FROM accounts WHERE uuid = $1`)
+		if err != nil {
+			return &serverError{err, "err preparing acct getter"}
+		}
+		var accountUserUuid string
+		err = stmt.QueryRow(uuid).Scan(&accountUserUuid)
+		if err == sql.ErrNoRows {
+			return writeError(w, errInputValidation)
+		}
+		if err != nil {
+			return &serverError{err, "err checking acct uuid"}
+		}
+		if accountUserUuid != requesterUserUuid {
+			return writeError(w, errInputValidation)
+		}
+		context.Set(r, accountUuid, uuid)
+		return fn(w, r)
+	}
+}
 
 func oauthTokenUserFinder(fn apiHandler) apiHandler {
 	return func(w http.ResponseWriter, r *http.Request) *serverError {
@@ -56,7 +80,7 @@ func oauthTokenUserFinder(fn apiHandler) apiHandler {
 			return writeError(w, errInputValidation)
 		}
 
-		stmt, err := db.Prepare(`SELECT user_uuid FROM oauth_tokens WHERE access_token = $1`)
+		stmt, err := db.Prepare(`SELECT user_uuid FROM oauth_tokens WHERE access_token = $1 AND expires_at > NOW()`)
 		if err != nil {
 			return &serverError{err, "could not prepare stmt"}
 		}
@@ -75,5 +99,6 @@ func oauthTokenUserFinder(fn apiHandler) apiHandler {
 		}
 
 		context.Set(r, userUuid, uuid)
+		return fn(w, r)
 	}
 }

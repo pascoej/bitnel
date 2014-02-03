@@ -10,18 +10,18 @@ import (
 func router() *mux.Router {
 	r := mux.NewRouter()
 
-	r.Handle("/", apiHandler(useMiddleware(indexHandler, oauthTokenUserFinder)))
+	r.Handle("/", apiHandler(useMiddleware(indexHandler)))
 
 	//su := r.PathPrefix("/users").Subrouter()
 	r.Handle("/users", apiHandler(createUserHandler)).Methods("POST")
 	r.Handle("/users", apiHandler(updateUserHandler)).Methods("PUT")
-
+	r.Handle("/accounts", apiHandler(useMiddleware(getAccountsHandler, oauthTokenUserFinder))).Methods("GET")
 	oauthr := r.PathPrefix("/oauth").Subrouter()
 	oauthr.Handle("/token", apiHandler(oauthTokenHandler)).Methods("POST")
 
 	sm := r.PathPrefix("/markets").Subrouter()
-	sm.Handle("/{currencyPair}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, marketFinder, sessionFinder))).Methods("GET")
-	sm.Handle("/{currencyPair}/orders", apiHandler(useMiddleware(createOrderHandler, marketFinder, sessionFinder))).Methods("POST")
+	sm.Handle("/{currencyPair}/accounts/{accountUuid}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, marketFinder, oauthTokenUserFinder, accountFinder))).Methods("GET")
+	sm.Handle("/{currencyPair}/accounts/{accountUuid}/orders", apiHandler(useMiddleware(createOrderHandler, marketFinder, oauthTokenUserFinder, accountFinder))).Methods("POST")
 	sm.Handle("/{currencyPair}/orders", apiHandler(useMiddleware(listOrderHandler, marketFinder))).Methods("GET")
 
 	r.NotFoundHandler = http.Handler(apiHandler(notFoundHandler))

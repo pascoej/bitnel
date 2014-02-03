@@ -109,6 +109,27 @@ func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 
 	return writeJson(w, orders)
 }
+func getAccountsHandler(w http.ResponseWriter, r *http.Request) *serverError {
+	uUuid := context.Get(r, userUuid)
+	stmt, err := db.Prepare(`SELECT uuid,user_uuid,type FROM accounts WHERE user_uuid = $1`)
+	if err != nil {
+		return &serverError{err, "err preparing get accounts"}
+	}
+	var accounts []model.Account
+	rows, err := stmt.Query(uUuid)
+	if err != nil {
+		return &serverError{err, "err getting accts"}
+	}
+	for rows.Next() {
+		var account model.Account
+		err = rows.Scan(&account.Uuid, &account.UserUuid, &account.Type)
+		if err != nil {
+			return &serverError{err, "err getting acct"}
+		}
+		accounts = append(accounts, account)
+	}
+	return writeJson(w, accounts)
+}
 
 // Handles getting the information of an order
 func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {

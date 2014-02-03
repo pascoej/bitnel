@@ -12,6 +12,7 @@ const (
 	TradeTransaction
 	WithdrawTransaction
 	DepositTransaction
+	OrderTransaction
 )
 
 func (t TransactionType) String() string {
@@ -24,6 +25,8 @@ func (t TransactionType) String() string {
 		return "deposit"
 	case DepositTransaction:
 		return "withdraw"
+	case OrderTransaction:
+		return "order"
 	}
 
 	return ""
@@ -39,6 +42,8 @@ func ParseTransactionType(tt string) TransactionType {
 		return WithdrawTransaction
 	case DepositTransaction.String():
 		return DepositTransaction
+	case OrderTransaction.String():
+		return OrderTransaction
 	}
 
 	return 0
@@ -52,6 +57,7 @@ type Transaction struct {
 	FeeAmount   money.Unit      `json:"fee_amount"`
 	CreatedAt   time.Time       `json:"created_at"`
 	Trade       *string         `json:-`
+	OrderUuid   *string         `json:-`
 }
 
 func (trans *Transaction) GetTotalAmount() money.Unit {
