@@ -15,10 +15,7 @@ type contextVar int
 const (
 	marketUuid contextVar = iota
 	userUuid
-<<<<<<< HEAD
 	accountUuid
-=======
->>>>>>> 8822ead2d45d8caa6d290ab78fc0e24a8ef488d4
 )
 
 // This middleware wraps around all handlers concerning markets.
@@ -47,7 +44,6 @@ func marketFinder(fn apiHandler) apiHandler {
 		return fn(w, r)
 	}
 }
-<<<<<<< HEAD
 func accountFinder(fn apiHandler) apiHandler {
 	return func(w http.ResponseWriter, r *http.Request) *serverError {
 		uuid := mux.Vars(r)["accountUuid"]
@@ -102,22 +98,6 @@ func oauthTokenUserFinder(fn apiHandler) apiHandler {
 			return &serverError{err, "could not get rows"}
 		}
 
-=======
-func sessionFinder(fn apiHandler) apiHandler {
-	return func(w http.ResponseWriter, r *http.Request) *serverError {
-		token := r.Header.Get("token")
-
-		log.Println(token)
-		stmt, err := db.Prepare(`SELECT user_uuid FROM sessions WHERE token = $1 AND expires_at > NOW()`)
-		if err != nil {
-			return &serverError{err, "err db"}
-		}
-		var uuid string
-		err = stmt.QueryRow(token).Scan(&uuid)
-		if err != nil {
-			return writeError(w, errAuth)
-		}
->>>>>>> 8822ead2d45d8caa6d290ab78fc0e24a8ef488d4
 		context.Set(r, userUuid, uuid)
 		return fn(w, r)
 	}

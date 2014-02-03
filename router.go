@@ -15,7 +15,6 @@ func router() *mux.Router {
 	//su := r.PathPrefix("/users").Subrouter()
 	r.Handle("/users", apiHandler(createUserHandler)).Methods("POST")
 	r.Handle("/users", apiHandler(updateUserHandler)).Methods("PUT")
-<<<<<<< HEAD
 	r.Handle("/accounts", apiHandler(useMiddleware(getAccountsHandler, oauthTokenUserFinder))).Methods("GET")
 	oauthr := r.PathPrefix("/oauth").Subrouter()
 	oauthr.Handle("/token", apiHandler(oauthTokenHandler)).Methods("POST")
@@ -23,15 +22,6 @@ func router() *mux.Router {
 	sm := r.PathPrefix("/markets").Subrouter()
 	sm.Handle("/{currencyPair}/accounts/{accountUuid}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, marketFinder, oauthTokenUserFinder, accountFinder))).Methods("GET")
 	sm.Handle("/{currencyPair}/accounts/{accountUuid}/orders", apiHandler(useMiddleware(createOrderHandler, marketFinder, oauthTokenUserFinder, accountFinder))).Methods("POST")
-=======
-
-	r.Handle("/sessions", apiHandler(createSessionHandler)).Methods("POST")
-
-	// /markets/btcusd/orders
-	sm := r.PathPrefix("/markets").Subrouter()
-	sm.Handle("/{currencyPair}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, marketFinder, sessionFinder))).Methods("GET")
-	sm.Handle("/{currencyPair}/orders", apiHandler(useMiddleware(createOrderHandler, marketFinder, sessionFinder))).Methods("POST")
->>>>>>> 8822ead2d45d8caa6d290ab78fc0e24a8ef488d4
 	sm.Handle("/{currencyPair}/orders", apiHandler(useMiddleware(listOrderHandler, marketFinder))).Methods("GET")
 
 	r.NotFoundHandler = http.Handler(apiHandler(notFoundHandler))
