@@ -93,7 +93,7 @@ func oauthTokenUserFinder(fn apiHandler) apiHandler {
 		switch {
 		case err == sql.ErrNoRows:
 			log.Println("asdf")
-			return writeError(w, errInputValidation)
+			return writeError(w, errAuth)
 		case err != nil:
 			return &serverError{err, "could not get rows"}
 		}
