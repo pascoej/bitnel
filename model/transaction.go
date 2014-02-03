@@ -57,7 +57,10 @@ type Transaction struct {
 	FeeAmount   money.Unit      `json:"fee_amount"`
 	CreatedAt   time.Time       `json:"created_at"`
 	Trade       *string         `json:-`
+<<<<<<< HEAD
 	OrderUuid   *string         `json:-`
+=======
+>>>>>>> 8822ead2d45d8caa6d290ab78fc0e24a8ef488d4
 }
 
 func (trans *Transaction) GetTotalAmount() money.Unit {
