@@ -16,14 +16,14 @@ type Config struct {
 func LoadConfig(filename string) (*Config, error) {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, errors.New("cannot read config file")
+		return nil, errors.New("config: cannot read config file")
 	}
 
 	var m Config
 	err = json.Unmarshal(b, &m)
 
 	if err != nil {
-		return nil, errors.New("cannot unmarshal json")
+		return nil, errors.New("config: cannot unmarshal json")
 	}
 
 	return &m, nil
