@@ -4,7 +4,7 @@ CREATE TABLE oauth_tokens (
     user_uuid uuid NOT NULL,
     access_token TEXT,
     expires_at timestamptz NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT NOW()
+    created_at timestamptz NOT NULL
 );
 
 ALTER TABLE oauth_tokens ADD CONSTRAINT oauth_tokens_user_uuid_fkey FOREIGN KEY (user_uuid) REFERENCES users (uuid);
