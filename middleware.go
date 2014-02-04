@@ -17,6 +17,7 @@ const (
 	reqMarket contextVar = iota
 	reqUser
 	reqAccount
+	reqOrder
 )
 
 // This middleware wraps around all handlers concerning markets.
@@ -109,6 +110,35 @@ func oauthTokenUserFinder(fn apiHandler) apiHandler {
 		}
 
 		context.Set(r, reqUser, user)
+
+		return fn(w, r)
+	}
+}
+
+func orderFinder(fn apiHandler) apiHandler {
+	return func(w http.ResponseWriter, r *http.Request) *serverError {
+		orderUuid := mux.Vars(r)["orderUuid"]
+
+		requestedAccount, ok := context.Get(r, reqAccount).(model.Account)
+		if !ok {
+			return &serverError{errors.New("wtf happeend"), "wtf happened"}
+		}
+
+		stmt, err := db.Prepare(`SELECT uuid FROM orders WHERE uuid = $1 AND account_uuid = $2`)
+		if err != nil {
+			return &serverError{err, "err preparing order getter"}
+		}
+
+		var order model.Order
+
+		switch err = stmt.QueryRow(orderUuid, requestedAccount.Uuid).Scan(&order.Uuid); {
+		case err == sql.ErrNoRows:
+			return writeError(w, errInputValidation)
+		case err != nil:
+			return &serverError{err, "err checking acct uuid"}
+		}
+
+		context.Set(r, reqOrder, order)
 
 		return fn(w, r)
 	}

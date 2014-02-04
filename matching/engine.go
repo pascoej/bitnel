@@ -24,13 +24,13 @@ const (
 )
 
 type Engine struct {
-	orderNotifier chan *model.Order
+	requestNotifier chan interface{}
 	database      *sql.DB
 }
 
 func NewEngine(db *sql.DB, bufferSize int) *Engine {
 	return &Engine{
-		orderNotifier: make(chan *model.Order, bufferSize),
+		requestNotifier: make(chan interface{}, bufferSize),
 		database:      db,
 	}
 }
@@ -40,12 +40,29 @@ func (m *Engine) Start() {
 	go m.listen()
 }
 
+type CancelRequest struct {
+	order *model.Order
+}
+
+type AddRequest struct {
+	order *model.Order
+}
+
 // adds an order to be matched
 // returns no error on succesfull add
 // otherwise fail miserably
 func (m *Engine) Add(o *model.Order) *matchingError {
 	select {
-	case m.orderNotifier <- o:
+	case m.requestNotifier <- &AddRequest{o}:
+		return nil
+	default:
+		return &matchingError{o}
+	}
+}
+
+func (m *Engine) Cancel(o *model.Order) *matchingError {
+	select {
+	case m.requestNotifier <- &CancelRequest{o}:
 		return nil
 	default:
 		return &matchingError{o}
@@ -219,19 +236,51 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	return nil
 }
 
+func (m *Engine) cancel(o *model.Order) *matchingError {
+	tx, err := m.database.Begin()
+	if err != nil {
+		return &matchingError{o}
+	}
+
+	stmt, err := tx.Prepare(`UPDATE orders SET status = $1 WHERE uuid = $2`)
+	if err != nil {
+		return &matchingError{o}
+	}
+
+	if _, err = stmt.Exec(model.CanceledStatus, o.Uuid); err != nil {
+		return &matchingError{o}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return &matchingError{o}
+	}
+
+	return nil
+}
+
 func (m *Engine) listen() {
 	for {
-		order := <-m.orderNotifier
+		req := <-m.requestNotifier
 
-		err := m.match(order)
-		for err != nil {
-			log.Println(err)
+		switch req := req.(type) {
+		case *AddRequest:
+			err := m.match(req.order)
+			for err != nil {
+				log.Println(err)
 
-			// wait 100 miliseconds and try again
-			time.Sleep(time.Millisecond * 100)
-			err = m.match(order)
+				// wait 100 miliseconds and try again
+				time.Sleep(time.Millisecond * 100)
+				err = m.match(req.order)
+			}
+		case *CancelRequest:
+			err := m.cancel(req.order)
+			for err != nil {
+				log.Println(err)
+
+				// wait 100 miliseconds and try again
+				time.Sleep(time.Millisecond * 100)
+				err = m.match(req.order)
+			}
 		}
-
-		// yay succesfull match
 	}
 }

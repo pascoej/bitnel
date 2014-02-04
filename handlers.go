@@ -77,6 +77,15 @@ func updateUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
 
 // cancels. does not delete
 func deleteOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
+	order, ok := context.Get(r, reqOrder).(model.Order)
+	if !ok {
+		return &serverError{errors.New("this should not happen"), "this should not happen"}
+	}
+
+	if err := globalMatchingEngine.Cancel(&order); err != nil {
+		return writeError(w, errTooBusy)
+	}
+
 	return nil
 }
 

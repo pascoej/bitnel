@@ -41,6 +41,7 @@ const (
 	errCodeInputValidation
 	errCodeNotFound
 	errCodeAuth
+	errCodeTooBusy
 )
 
 func (e apiErrorCode) String() string {
@@ -53,6 +54,8 @@ func (e apiErrorCode) String() string {
 		return "not_found"
 	case errCodeAuth:
 		return "err_auth"
+	case errCodeTooBusy:
+		return "too_busy"
 	}
 
 	return ""
@@ -97,6 +100,7 @@ var (
 	errServerError     = &apiError{errTypeServer, errCodeServerError, http.StatusInternalServerError, "Something went wrong on our side"}
 	errNotFound        = &apiError{errTypeRequest, errCodeNotFound, http.StatusNotFound, "We cannot find that resource"}
 	errAuth            = &apiError{errTypeRequest, errCodeAuth, http.StatusForbidden, "You are not authenticated"}
+	errTooBusy = 	&apiError{errTypeServer, errCodeTooBusy, http.StatusServiceUnavailable, "The server is too busy"}
 )
 
 // `writeError` notifies the user of an API error. This calls `writeJson` too.
