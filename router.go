@@ -12,17 +12,38 @@ func router() *mux.Router {
 
 	r.Handle("/", apiHandler(useMiddleware(indexHandler)))
 
-	//su := r.PathPrefix("/users").Subrouter()
+	// CREATE A NEW USER
+	// POST /users
 	r.Handle("/users", apiHandler(createUserHandler)).Methods("POST")
+
+	// UPDATE A USER'S INFORMATION
+	// PUT /users
 	r.Handle("/users", apiHandler(updateUserHandler)).Methods("PUT")
-	r.Handle("/accounts", apiHandler(useMiddleware(getAccountsHandler, oauthTokenUserFinder))).Methods("GET")
+
 	oauthr := r.PathPrefix("/oauth").Subrouter()
+
+	// POST /oauth/token
 	oauthr.Handle("/token", apiHandler(oauthTokenHandler)).Methods("POST")
 
-	sm := r.PathPrefix("/markets").Subrouter()
-	sm.Handle("/{currencyPair}/accounts/{accountUuid}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, marketFinder, oauthTokenUserFinder, accountFinder))).Methods("GET")
-	sm.Handle("/{currencyPair}/accounts/{accountUuid}/orders", apiHandler(useMiddleware(createOrderHandler, marketFinder, oauthTokenUserFinder, accountFinder))).Methods("POST")
-	sm.Handle("/{currencyPair}/orders", apiHandler(useMiddleware(listOrderHandler, marketFinder))).Methods("GET")
+	// GET /markets/BTCUSD/orders
+	r.Handle("/markets/{currencyPair}/orders", apiHandler(useMiddleware(listOrderHandler, marketFinder))).Methods("GET")
+
+	sm := r.PathPrefix("/accounts").Subrouter()
+
+	// GET ORDER BY ORDER UUID ASSCOCIATED WITH AN ACCOUNT
+	// GET /accounts/0564bdb5-c35f-4f9f-b1bb-b574d201fa90/orders/a564bdd2-c35f-4f9f-b1bd-b574d201fa90
+	sm.Handle("/{accountUuid}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, oauthTokenUserFinder, accountFinder))).Methods("GET")
+
+	// CREATE AN ORDER ASSOCIATED WITH AN ACCOUNT
+	// POST /accounts/0564bdb5-c35f-4f9f-b1bb-b574d201fa90/orders
+	sm.Handle("/{accountUuid}/orders", apiHandler(useMiddleware(createOrderHandler, oauthTokenUserFinder, accountFinder))).Methods("POST")
+
+	// SINGULAR RESOURCE -- USER NEEDS TO BE AUTHENTICATED
+	um := r.PathPrefix("/user").Subrouter()
+
+	// GET ACCOUNTS OF A USER
+	// GET /user/accounts
+	um.Handle("/accounts", apiHandler(useMiddleware(getAccountsHandler, oauthTokenUserFinder))).Methods("GET")
 
 	r.NotFoundHandler = http.Handler(apiHandler(notFoundHandler))
 

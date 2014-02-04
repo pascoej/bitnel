@@ -24,6 +24,7 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) *serverError {
 }
 
 // Handles user creation
+// POST /users
 func createUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	var user model.User
 
@@ -79,6 +80,7 @@ func deleteOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 }
 
 // Lists orders associated with a market
+// GET /markets/{currencyPair}/orders
 func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	stmt, err := db.Prepare(`
 		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
@@ -109,29 +111,38 @@ func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 
 	return writeJson(w, orders)
 }
+
+// GET /user/accounts
 func getAccountsHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	uUuid := context.Get(r, userUuid)
-	stmt, err := db.Prepare(`SELECT uuid,user_uuid,type FROM accounts WHERE user_uuid = $1`)
+
+	stmt, err := db.Prepare("SELECT uuid, user_uuid FROM accounts WHERE user_uuid = $1")
 	if err != nil {
 		return &serverError{err, "err preparing get accounts"}
 	}
-	var accounts []model.Account
+
+	var accounts []*model.Account
+
 	rows, err := stmt.Query(uUuid)
 	if err != nil {
 		return &serverError{err, "err getting accts"}
 	}
+	defer rows.Close()
+
 	for rows.Next() {
 		var account model.Account
-		err = rows.Scan(&account.Uuid, &account.UserUuid, &account.Type)
+		err = rows.Scan(&account.Uuid, &account.UserUuid)
 		if err != nil {
 			return &serverError{err, "err getting acct"}
 		}
-		accounts = append(accounts, account)
+
+		accounts = append(accounts, &account)
 	}
 	return writeJson(w, accounts)
 }
 
 // Handles getting the information of an order
+// GET /accounts/{accountUuid}/orders/{orderUuid}
 func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	orderUuid := mux.Vars(r)["orderUuid"]
 
@@ -160,6 +171,7 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 }
 
 // Handles the creation of an order
+// POST /accounts/{accountUuid}/orders
 func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	var order model.Order
 
