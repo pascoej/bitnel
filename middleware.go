@@ -3,9 +3,10 @@ package main
 import (
 	"database/sql"
 	"github.com/gorilla/context"
+	"github.com/bitnel/bitnel-api/model"
 	"github.com/gorilla/mux"
-	"log"
 	"net/http"
+	"errors"
 	"strings"
 )
 
@@ -13,9 +14,9 @@ import (
 type contextVar int
 
 const (
-	marketUuid contextVar = iota
-	userUuid
-	accountUuid
+	reqMarket contextVar = iota
+	reqUser
+	reqAccount
 )
 
 // This middleware wraps around all handlers concerning markets.
@@ -23,23 +24,23 @@ func marketFinder(fn apiHandler) apiHandler {
 	return func(w http.ResponseWriter, r *http.Request) *serverError {
 		pair := mux.Vars(r)["currencyPair"]
 
-		stmt, err := db.Prepare(`SELECT uuid FROM markets WHERE currency_pair = $1`)
+		stmt, err := db.Prepare(`SELECT uuid, base_currency, quote_currency, currency_pair
+		FROM markets
+		WHERE currency_pair = $1`)
 		if err != nil {
 			return &serverError{err, "could not prepare stmt"}
 		}
 
-		var uuid string
+		var market model.Market
 
-		err = stmt.QueryRow(pair).Scan(&uuid)
-
-		switch {
+		switch err = stmt.QueryRow(pair).Scan(&market.Uuid, &market.BaseCurrency, &market.QuoteCurrency, &market.CurrencyPair); {
 		case err == sql.ErrNoRows:
 			return writeError(w, errAuth)
 		case err != nil:
 			return &serverError{err, "could not get rows"}
 		}
 
-		context.Set(r, marketUuid, uuid)
+		context.Set(r, reqMarket, market)
 
 		return fn(w, r)
 	}
@@ -49,24 +50,30 @@ func accountFinder(fn apiHandler) apiHandler {
 	return func(w http.ResponseWriter, r *http.Request) *serverError {
 		uuid := mux.Vars(r)["accountUuid"]
 
-		requesterUserUuid := context.Get(r, userUuid)
+		requestedUser, ok := context.Get(r, reqUser).(model.User)
+		if !ok {
+			return &serverError{errors.New("wtf happeend"), "wtf happened"}
+		}
+
 		stmt, err := db.Prepare(`SELECT user_uuid FROM accounts WHERE uuid = $1`)
 		if err != nil {
 			return &serverError{err, "err preparing acct getter"}
 		}
 
-		var accountUserUuid string
-		if err = stmt.QueryRow(uuid).Scan(&accountUserUuid); err == sql.ErrNoRows {
+		var account model.Account
+
+		switch err = stmt.QueryRow(uuid).Scan(&account.Uuid); {
+		case err == sql.ErrNoRows:
 			return writeError(w, errInputValidation)
-		} else if err != nil {
+		case err != nil:
 			return &serverError{err, "err checking acct uuid"}
 		}
 
-		if accountUserUuid != requesterUserUuid {
+		if account.Uuid != requestedUser.Uuid {
 			return writeError(w, errInputValidation)
 		}
 
-		context.Set(r, accountUuid, uuid)
+		context.Set(r, reqAccount, account)
 
 		return fn(w, r)
 	}
@@ -84,25 +91,25 @@ func oauthTokenUserFinder(fn apiHandler) apiHandler {
 			return writeError(w, errInputValidation)
 		}
 
-		stmt, err := db.Prepare(`SELECT user_uuid FROM oauth_tokens WHERE access_token = $1 AND expires_at > NOW()`)
+		stmt, err := db.Prepare(`SELECT uuid, email, created_at
+			FROM users WHERE uuid = (
+			SELECT user_uuid FROM oauth_tokens WHERE access_token = $1 AND expires_at > NOW())`)
 		if err != nil {
 			return &serverError{err, "could not prepare stmt"}
 		}
 
-		log.Println(authHeader)
-
-		var uuid string
-		err = stmt.QueryRow(bearer[1]).Scan(&uuid)
+		var user model.User
+		err = stmt.QueryRow(bearer[1]).Scan(&user.Uuid, &user.Email, &user.CreatedAt)
 
 		switch {
 		case err == sql.ErrNoRows:
-			log.Println("asdf")
 			return writeError(w, errAuth)
 		case err != nil:
 			return &serverError{err, "could not get rows"}
 		}
 
-		context.Set(r, userUuid, uuid)
+		context.Set(r, reqUser, user)
+
 		return fn(w, r)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/bitnel/bitnel-api/model"
 	"github.com/bitnel/bitnel-api/money"
 	"github.com/gorilla/context"
+	"errors"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -91,7 +92,12 @@ func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		return &serverError{err, "could not prepare stmt"}
 	}
 
-	rows, err := stmt.Query(context.Get(r, marketUuid))
+	mkt, ok := context.Get(r, reqMarket).(model.Market)
+	if !ok {
+		return &serverError{errors.New("this should not happen"), "this should not happen"}
+	}
+
+	rows, err := stmt.Query(mkt.Uuid)
 	if err != nil {
 		return &serverError{err, "could not query"}
 	}
@@ -114,7 +120,10 @@ func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 
 // GET /user/accounts
 func getAccountsHandler(w http.ResponseWriter, r *http.Request) *serverError {
-	uUuid := context.Get(r, userUuid)
+	user, ok := context.Get(r, reqUser).(model.User)
+	if !ok {
+		return &serverError{errors.New("this should not happen"), "this should not happen"}
+	}
 
 	stmt, err := db.Prepare("SELECT uuid, user_uuid FROM accounts WHERE user_uuid = $1")
 	if err != nil {
@@ -123,7 +132,7 @@ func getAccountsHandler(w http.ResponseWriter, r *http.Request) *serverError {
 
 	var accounts []*model.Account
 
-	rows, err := stmt.Query(uUuid)
+	rows, err := stmt.Query(user.Uuid)
 	if err != nil {
 		return &serverError{err, "err getting accts"}
 	}
@@ -138,6 +147,7 @@ func getAccountsHandler(w http.ResponseWriter, r *http.Request) *serverError {
 
 		accounts = append(accounts, &account)
 	}
+
 	return writeJson(w, accounts)
 }
 
@@ -173,6 +183,11 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 // Handles the creation of an order
 // POST /accounts/{accountUuid}/orders
 func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
+	market, ok := context.Get(r, reqMarket).(model.Market)
+	if !ok {
+		return &serverError{errors.New("errors"), "error"}
+	}
+
 	var order model.Order
 
 	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
@@ -206,7 +221,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	}
 
 	err = stmt.QueryRow(
-		context.Get(r, marketUuid),
+		market.Uuid,
 		order.Size,
 		order.Size,
 		order.Price,
