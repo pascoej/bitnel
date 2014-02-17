@@ -33,16 +33,16 @@ func router() *mux.Router {
 	// GET ORDER BY ORDER UUID ASSCOCIATED WITH AN ACCOUNT
 	// GET /accounts/0564bdb5-c35f-4f9f-b1bb-b574d201fa90/orders/a564bdd2-c35f-4f9f-b1bd-b574d201fa90
 	sm.Handle("/{accountUuid}/orders/{orderUuid}", apiHandler(useMiddleware(getOrderHandler, oauthTokenUserFinder,
-			accountFinder, orderFinder))).Methods("GET")
+		accountFinder, orderFinder))).Methods("GET")
 
 	// CREATE AN ORDER ASSOCIATED WITH AN ACCOUNT
 	// POST /accounts/0564bdb5-c35f-4f9f-b1bb-b574d201fa90/orders
-	sm.Handle("/{accountUuid}/orders", apiHandler(useMiddleware(createOrderHandler, oauthTokenUserFinder, accountFinder))).Methods("POST")
+	sm.Handle("/{accountUuid}/orders", apiHandler(useMiddleware(createOrderHandler, accountFinder, oauthTokenUserFinder))).Methods("POST")
 
 	// DELETE (CANCELS) AN ORDER ASSOCIATED WITH AN ACCOUNT
 	// POST /accounts/0564bdb5-c35f-4f9f-b1bb-b574d201fa90/orders/a564bdd2-c35f-4f9f-b1bd-b574d201fa90
 	sm.Handle("/{accountUuid}/orders/{orderUuid}", apiHandler(useMiddleware(deleteOrderHandler, oauthTokenUserFinder,
-			accountFinder, orderFinder))).Methods("DELETE")
+		accountFinder, orderFinder))).Methods("DELETE")
 
 	// SINGULAR RESOURCE -- USER NEEDS TO BE AUTHENTICATED
 	um := r.PathPrefix("/user").Subrouter()

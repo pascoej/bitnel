@@ -173,7 +173,7 @@ func (x *OrderStatus) UnmarshalJSON(b []byte) error {
 // a market.
 type Order struct {
 	Uuid        string      `json:"uuid"`
-	MarketUuid  string      `json:"-"`
+	MarketUuid  *string     `json:"market_uuid"`
 	Size        *money.Unit `json:"size"`
 	InitialSize money.Unit  `json:"initial_size"`
 	Price       *money.Unit `json:"price"`

@@ -60,6 +60,6 @@ type Transaction struct {
 	OrderUuid   *string         `json:-`
 }
 
-func (trans *Transaction) GetTotalAmount() money.Unit {
+func (trans *Transaction) GetAmountAfterFee() money.Unit {
 	return trans.Amount - trans.FeeAmount
 }

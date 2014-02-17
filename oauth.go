@@ -11,7 +11,7 @@ type oauthAccessToken struct {
 	Uuid        string    `json:"-"`
 	UserUuid    string    `json:"-"`
 	AccessToken string    `json:"access_token"`
-	ExpiresIn   int64     `json:"expires_at"`
+	ExpiresIn   int64     `json:"expires_in"`
 	CreatedAt   time.Time `json:"-"`
 }
 

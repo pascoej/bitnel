@@ -2,11 +2,11 @@ package main
 
 import (
 	"database/sql"
-	"github.com/gorilla/context"
+	"errors"
 	"github.com/bitnel/bitnel-api/model"
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"net/http"
-	"errors"
 	"strings"
 )
 
@@ -56,21 +56,21 @@ func accountFinder(fn apiHandler) apiHandler {
 			return &serverError{errors.New("wtf happeend"), "wtf happened"}
 		}
 
-		stmt, err := db.Prepare(`SELECT user_uuid FROM accounts WHERE uuid = $1`)
+		stmt, err := db.Prepare(`SELECT uuid,user_uuid FROM accounts WHERE uuid = $1`)
 		if err != nil {
 			return &serverError{err, "err preparing acct getter"}
 		}
 
 		var account model.Account
 
-		switch err = stmt.QueryRow(uuid).Scan(&account.Uuid); {
+		switch err = stmt.QueryRow(uuid).Scan(&account.Uuid, &account.UserUuid); {
 		case err == sql.ErrNoRows:
 			return writeError(w, errInputValidation)
 		case err != nil:
 			return &serverError{err, "err checking acct uuid"}
 		}
 
-		if account.Uuid != requestedUser.Uuid {
+		if account.UserUuid != requestedUser.Uuid {
 			return writeError(w, errInputValidation)
 		}
 

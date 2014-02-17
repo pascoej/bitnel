@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/bitnel/bitnel-api/model"
 	"github.com/bitnel/bitnel-api/money"
 	"github.com/gorilla/context"
-	"errors"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 )
 
@@ -192,17 +193,14 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 // Handles the creation of an order
 // POST /accounts/{accountUuid}/orders
 func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
-	market, ok := context.Get(r, reqMarket).(model.Market)
-	if !ok {
-		return &serverError{errors.New("errors"), "error"}
-	}
-
+	//market, ok := context.Get(r, reqMarket).(model.Market)
+	//if !ok {
+	//	return &serverError{errors.New("errors"), "error"}
+	//}
 	var order model.Order
-
 	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
 		return &serverError{err, "could not decode input createOrderHandler"}
 	}
-
 	if order.Size == nil || !(*order.Size >= money.Satoshi) || !(*order.Size <= money.Bitcoin*1000) {
 		return writeError(w, errInputValidation)
 	}
@@ -214,16 +212,23 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if order.Price == nil || !(*order.Price >= money.Satoshi) || !(*order.Price <= money.Bitcoin*1000) {
 		return writeError(w, errInputValidation)
 	}
-
+	log.Println(order.MarketUuid)
 	tx, err := db.Begin()
 	if err != nil {
 		return &serverError{err, "cannot begin tx"}
 	}
-
+	var market model.Market
+	marketStmt, err := tx.Prepare(`SELECT uuid,base_currency,quote_currency,currency_pair FROM markets WHERE uuid = $1`)
+	if err != nil {
+		return &serverError{err, "euo"}
+	}
+	if err = marketStmt.QueryRow(order.MarketUuid).Scan(&market.Uuid, &market.BaseCurrency, &market.QuoteCurrency, &market.CurrencyPair); err != nil {
+		return &serverError{err, "cannot begin tx"}
+	}
 	stmt, err := tx.Prepare(`
-		INSERT INTO orders (market_uuid, size, initial_size, price, side, status)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING uuid, market_uuid, size, initial_size, price, side, status, created_at
+		INSERT INTO orders (market_uuid, size, initial_size, price, side, status, account_uuid)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING uuid, market_uuid, size, initial_size, price, side, status, created_at, account_uuid
 	`)
 	if err != nil {
 		return &serverError{err, "error"}
@@ -236,6 +241,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		order.Price,
 		order.Side,
 		order.Status,
+		context.Get(r, reqAccount).(model.Account).Uuid,
 	).Scan(
 		&order.Uuid,
 		&order.MarketUuid,
@@ -245,16 +251,38 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		&order.Side,
 		&order.Status,
 		&order.CreatedAt,
+		&order.AccountUuid,
 	)
-
+	if err != nil {
+		return &serverError{err, "error"}
+	}
+	stmt, err = tx.Prepare(`UPDATE balances SET available_balance = available_balance - $1, reserved_balance = reserved_balance + $1 WHERE currency = $2 AND account_uuid = $3 RETURNING available_balance`)
 	if err != nil {
 		return &serverError{err, "lol"}
+	}
+	if *order.Side == model.BidSide {
+		var afterBalance *money.Unit
+		//log.Println((order.InitialSize * *order.Price), market.QuoteCurrency, *order.AccountUuid)
+		if err = stmt.QueryRow((order.InitialSize * *order.Price), market.QuoteCurrency, *order.AccountUuid).Scan(&afterBalance); err != nil {
+			return &serverError{err, "111"}
+		}
+		if *afterBalance < money.Unit(0) {
+			return writeError(w, errInsufficientFunds) // change to not enough moneyzzz
+		}
+	} else {
+		var afterBalance *money.Unit
+		//log.Println((order.InitialSize * *order.Price), market.baseCurrency, *order.AccountUuid)
+		if err = stmt.QueryRow(order.InitialSize, market.BaseCurrency, *order.AccountUuid).Scan(&afterBalance); err != nil {
+			return &serverError{err, "111"}
+		}
+		if *afterBalance < money.Unit(0) {
+			return writeError(w, errInsufficientFunds) // change to not enough moneyzzz
+		}
 	}
 
 	if err = tx.Commit(); err != nil {
 		return &serverError{err, "tx commit err"}
 	}
-
 	globalMatchingEngine.Add(&order)
 
 	return writeJson(w, order)

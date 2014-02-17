@@ -25,13 +25,13 @@ const (
 
 type Engine struct {
 	requestNotifier chan interface{}
-	database      *sql.DB
+	database        *sql.DB
 }
 
 func NewEngine(db *sql.DB, bufferSize int) *Engine {
 	return &Engine{
 		requestNotifier: make(chan interface{}, bufferSize),
-		database:      db,
+		database:        db,
 	}
 }
 
@@ -71,41 +71,46 @@ func (m *Engine) Cancel(o *model.Order) *matchingError {
 
 func (m *Engine) match(o *model.Order) *matchingError {
 	tx, err := m.database.Begin()
+	log.Println(1)
 	if err != nil {
 		return &matchingError{o}
 	}
-
+	log.Println(2)
 	var stmt *sql.Stmt
 
 	// maybe have more orders later on
 	if *o.Side == model.BidSide {
-		stmt, err = tx.Prepare(`SELECT uuid, price, size, initial_size, status, side FROM orders
+		stmt, err = tx.Prepare(`SELECT uuid, price, size, initial_size, status, side, account_uuid FROM orders
 			WHERE (status = $1 OR status = $2) AND side = $3 AND price <= $4
 			ORDER BY price ASC, created_at ASC`)
 	} else if *o.Side == model.AskSide {
-		stmt, err = tx.Prepare(`SELECT uuid, price, size,initial_size, status, side FROM orders
+		stmt, err = tx.Prepare(`SELECT uuid, price, size,initial_size, status, side,account_uuid FROM orders
 			WHERE (status = $1 OR status = $2) AND side = $3 AND price >= $4
 			ORDER BY price DESC, created_at ASC`)
 	} else {
 		return &matchingError{o}
 	}
+	log.Println(2)
 	if err != nil {
 		return &matchingError{o}
 	}
+	log.Println(3)
 
 	rows, err := stmt.Query(model.OpenStatus, model.PartiallyFilledStatus, (*o.Side).CounterSide(), o.Price)
 	if err != nil {
 		return &matchingError{o}
 	}
+	log.Println(4)
 
 	var counterOrders []model.Order
 	var trades map[string]model.Trade = make(map[string]model.Trade) // The counter order uuid is the key
 	for rows.Next() && *o.Size > money.Unit(0) {
 		var counterOrder model.Order
-		err = rows.Scan(&counterOrder.Uuid, &counterOrder.Price, &counterOrder.Size, &counterOrder.InitialSize, &counterOrder.Status, &counterOrder.Side)
+		err = rows.Scan(&counterOrder.Uuid, &counterOrder.Price, &counterOrder.Size, &counterOrder.InitialSize, &counterOrder.Status, &counterOrder.Side, &counterOrder.AccountUuid)
 		if err != nil {
 			return &matchingError{o}
 		}
+		log.Println(5)
 		var price money.Unit
 		if *o.Side == model.AskSide {
 			if *counterOrder.Price > *o.Price {
@@ -151,48 +156,72 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	if err != nil {
 		return &matchingError{o}
 	}
-	tradeStmt, err := tx.Prepare(`INSERT INTO trades (amount,price) RETURNING uuid`)
+	log.Println(6)
+	tradeStmt, err := tx.Prepare(`INSERT INTO trades (amount,price) VALUES($1,$2) RETURNING uuid`)
 	if err != nil {
 		return &matchingError{o}
 	}
+	log.Println(7)
 	transactionStmt, err := tx.Prepare(`INSERT INTO transactions (balance_uuid,type,amount,fee_amount, trade)  VALUES($1,$2,$3,$4,$5)`)
 	if err != nil {
 		return &matchingError{o}
 	}
-	reservedBalanceStmt, err := tx.Prepare(`UPDATE balances SET reserved_balance = reserved_balance+$1 WHERE user_uuid = $2 AND currency = $3 RETURNING uuid`)
+	log.Println(8)
+	reservedBalanceStmt, err := tx.Prepare(`UPDATE balances SET reserved_balance = reserved_balance+$1 WHERE account_uuid = $2 AND currency = $3 RETURNING uuid`)
 	if err != nil {
 		return &matchingError{o}
 	}
-	balanceStmt, err := tx.Prepare(`UPDATE balances SET balance = balance+$1 WHERE user_uuid = $2 AND currency = $3 RETURNING uuid`)
+	log.Println(9)
+	balanceStmt, err := tx.Prepare(`UPDATE balances SET available_balance = available_balance+$1 WHERE account_uuid = $2 AND currency = $3 RETURNING uuid`)
 	if err != nil {
 		return &matchingError{o}
 	}
+	log.Println(10)
 	var market model.Market
 	marketStmt, err := tx.Prepare(`SELECT base_currency,quote_currency,currency_pair FROM markets WHERE uuid = $1`)
 	if err != nil {
 		return &matchingError{o}
 	}
+	log.Println(11)
 	if err = marketStmt.QueryRow(o.MarketUuid).Scan(&market.BaseCurrency, &market.QuoteCurrency, &market.CurrencyPair); err != nil {
 		return &matchingError{o}
 	}
+	log.Println(12)
 	for _, counterOrder := range counterOrders {
 		_, err = orderStmt.Exec(*counterOrder.Size, counterOrder.Status, counterOrder.Uuid)
 		if err != nil {
 			return &matchingError{o}
 		}
+		log.Println(13)
 		trade := trades[counterOrder.Uuid]
 		if err = tradeStmt.QueryRow(trade.Amount, trade.Price).Scan(&trade.Uuid); err != nil {
 			return &matchingError{o}
 		}
-		var transaction model.Transaction
-		if *counterOrder.Side == model.AskSide {
-			transaction.Amount = trade.Amount * trade.Price
-		} else {
-			transaction.Amount = -1 * trade.Amount * trade.Price
-		}
-		transaction.Type = model.TradeTransaction
-		transaction.Trade = &counterOrder.Uuid
-		transaction.FeeAmount = (transaction.Amount / (1 / feeFraction))
+		log.Println(14)
+		//The seller GETTING the quote currency.
+		var sellerQuoteTransaction model.Transaction
+		sellerQuoteTransaction.Amount = trade.Amount * trade.Price
+		sellerQuoteTransaction.Type = model.TradeTransaction
+		sellerQuoteTransaction.Trade = &counterOrder.Uuid
+		sellerQuoteTransaction.FeeAmount = (sellerQuoteTransaction.Amount / (1 / feeFraction))
+		//The seller LOSING the base currency
+		var sellerBaseTransaction model.Transaction
+		sellerBaseTransaction.Amount = trade.Amount
+		sellerBaseTransaction.Type = model.TradeTransaction
+		sellerBaseTransaction.Trade = &counterOrder.Uuid
+		sellerBaseTransaction.FeeAmount = 0
+		//The buying getting the base currency
+		var buyerBaseTransaction model.Transaction
+		buyerBaseTransaction.Amount = trade.Amount
+		buyerBaseTransaction.Type = model.TradeTransaction
+		buyerBaseTransaction.Trade = &counterOrder.Uuid
+		buyerBaseTransaction.FeeAmount = (buyerBaseTransaction.Amount / (1 / feeFraction))
+		//The buyer losing the quote currency
+		var buyerQuoteTransaction model.Transaction
+		buyerQuoteTransaction.Amount = trade.Amount * trade.Price
+		buyerQuoteTransaction.Type = model.TradeTransaction
+		buyerQuoteTransaction.Trade = &counterOrder.Uuid
+		buyerQuoteTransaction.FeeAmount = 0
 		var buyerAccountUuid string
 		var sellerAccountUuid string
 		if *o.Side == model.AskSide {
@@ -202,19 +231,44 @@ func (m *Engine) match(o *model.Order) *matchingError {
 			sellerAccountUuid = *counterOrder.AccountUuid
 			buyerAccountUuid = *o.AccountUuid
 		}
-		var sellerBalance model.Balance
-		if err = balanceStmt.QueryRow(transaction.Amount, sellerAccountUuid, market.QuoteCurrency).Scan(&sellerBalance.Uuid); err != nil {
+
+		//Editng seller's quote balance (FEE HERE)
+		var sellerQuoteBalance model.Balance
+		if err = balanceStmt.QueryRow(sellerQuoteTransaction.GetAmountAfterFee(), sellerAccountUuid, market.QuoteCurrency).Scan(&sellerQuoteBalance.Uuid); err != nil {
 			return &matchingError{o}
 		}
-		_, err := transactionStmt.Exec(sellerBalance.Uuid, model.TradeTransaction, transaction.Amount, transaction.FeeAmount, trade.Uuid)
+		_, err := transactionStmt.Exec(sellerQuoteBalance.Uuid, model.TradeTransaction, sellerQuoteTransaction.Amount, sellerQuoteTransaction.FeeAmount, trade.Uuid)
 		if err != nil {
 			return &matchingError{o}
 		}
-		var buyerBalance model.Balance
-		if err = reservedBalanceStmt.QueryRow(transaction.GetTotalAmount(), buyerAccountUuid, market.BaseCurrency).Scan(&buyerBalance.Uuid); err != nil {
+		//Editing seller's base (reserved) balance (NO FEE)
+		var sellerBaseBalance model.Balance
+		if err = reservedBalanceStmt.QueryRow(sellerBaseTransaction.Amount*-1, sellerAccountUuid, market.BaseCurrency).Scan(&sellerBaseBalance.Uuid); err != nil {
 			return &matchingError{o}
 		}
-		_, err = transactionStmt.Exec(buyerBalance.Uuid, model.TradeTransaction, transaction.Amount, transaction.FeeAmount, trade.Uuid)
+		_, err = transactionStmt.Exec(sellerBaseBalance.Uuid, model.TradeTransaction, sellerBaseTransaction.Amount, 0, trade.Uuid)
+		if err != nil {
+			return &matchingError{o}
+		}
+		//Editng bufer's base balance (FEE HERE)
+		var buyerBaseBalance model.Balance
+		if err = balanceStmt.QueryRow(buyerBaseTransaction.GetAmountAfterFee(), buyerAccountUuid, market.BaseCurrency).Scan(&buyerBaseBalance.Uuid); err != nil {
+			return &matchingError{o}
+		}
+		_, err = transactionStmt.Exec(buyerBaseBalance.Uuid, model.TradeTransaction, buyerBaseTransaction.Amount, buyerBaseTransaction.FeeAmount, trade.Uuid)
+		if err != nil {
+			return &matchingError{o}
+		}
+		//editing buyer's quote balance (NO FEE)
+		var buyerQuoteBalance model.Balance
+		if err = reservedBalanceStmt.QueryRow(buyerQuoteTransaction.Amount*-1, buyerAccountUuid, market.QuoteCurrency).Scan(&buyerQuoteBalance.Uuid); err != nil {
+			return &matchingError{o}
+		}
+		_, err = transactionStmt.Exec(buyerQuoteBalance.Uuid, model.TradeTransaction, buyerQuoteTransaction.Amount, 0, trade.Uuid)
+		if err != nil {
+			return &matchingError{o}
+		}
+		_, err = orderStmt.Exec(*counterOrder.Size, counterOrder.Status, counterOrder.Uuid)
 		if err != nil {
 			return &matchingError{o}
 		}
@@ -228,10 +282,12 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	if err != nil {
 		return &matchingError{o}
 	}
+	log.Println(20)
 
 	if err = tx.Commit(); err != nil {
 		return &matchingError{o}
 	}
+	log.Println(21)
 
 	return nil
 }

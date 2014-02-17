@@ -42,6 +42,7 @@ const (
 	errCodeNotFound
 	errCodeAuth
 	errCodeTooBusy
+	errCodeInsufficientFunds
 )
 
 func (e apiErrorCode) String() string {
@@ -56,6 +57,8 @@ func (e apiErrorCode) String() string {
 		return "err_auth"
 	case errCodeTooBusy:
 		return "too_busy"
+	case errCodeInsufficientFunds:
+		return "insufficient_funds"
 	}
 
 	return ""
@@ -96,11 +99,12 @@ type apiError struct {
 }
 
 var (
-	errInputValidation = &apiError{errTypeRequest, errCodeInputValidation, http.StatusBadRequest, "Your input could not be validated"}
-	errServerError     = &apiError{errTypeServer, errCodeServerError, http.StatusInternalServerError, "Something went wrong on our side"}
-	errNotFound        = &apiError{errTypeRequest, errCodeNotFound, http.StatusNotFound, "We cannot find that resource"}
-	errAuth            = &apiError{errTypeRequest, errCodeAuth, http.StatusForbidden, "You are not authenticated"}
-	errTooBusy = 	&apiError{errTypeServer, errCodeTooBusy, http.StatusServiceUnavailable, "The server is too busy"}
+	errInputValidation   = &apiError{errTypeRequest, errCodeInputValidation, http.StatusBadRequest, "Your input could not be validated"}
+	errServerError       = &apiError{errTypeServer, errCodeServerError, http.StatusInternalServerError, "Something went wrong on our side"}
+	errNotFound          = &apiError{errTypeRequest, errCodeNotFound, http.StatusNotFound, "We cannot find that resource"}
+	errAuth              = &apiError{errTypeRequest, errCodeAuth, http.StatusForbidden, "You are not authenticated"}
+	errTooBusy           = &apiError{errTypeServer, errCodeTooBusy, http.StatusServiceUnavailable, "The server is too busy"}
+	errInsufficientFunds = &apiError{errTypeRequest, errCodeInsufficientFunds, http.StatusNotAcceptable, "You have insufficient funds"}
 )
 
 // `writeError` notifies the user of an API error. This calls `writeJson` too.
