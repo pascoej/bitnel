@@ -71,11 +71,9 @@ func (m *Engine) Cancel(o *model.Order) *matchingError {
 
 func (m *Engine) match(o *model.Order) *matchingError {
 	tx, err := m.database.Begin()
-	log.Println(1)
 	if err != nil {
 		return &matchingError{o}
 	}
-	log.Println(2)
 	var stmt *sql.Stmt
 
 	// maybe have more orders later on
@@ -90,17 +88,14 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	} else {
 		return &matchingError{o}
 	}
-	log.Println(2)
 	if err != nil {
 		return &matchingError{o}
 	}
-	log.Println(3)
 
 	rows, err := stmt.Query(model.OpenStatus, model.PartiallyFilledStatus, (*o.Side).CounterSide(), o.Price)
 	if err != nil {
 		return &matchingError{o}
 	}
-	log.Println(4)
 
 	var counterOrders []model.Order
 	var trades map[string]model.Trade = make(map[string]model.Trade) // The counter order uuid is the key
@@ -110,7 +105,6 @@ func (m *Engine) match(o *model.Order) *matchingError {
 		if err != nil {
 			return &matchingError{o}
 		}
-		log.Println(5)
 		var price money.Unit
 		if *o.Side == model.AskSide {
 			if *counterOrder.Price > *o.Price {
@@ -156,48 +150,39 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	if err != nil {
 		return &matchingError{o}
 	}
-	log.Println(6)
 	tradeStmt, err := tx.Prepare(`INSERT INTO trades (amount,price) VALUES($1,$2) RETURNING uuid`)
 	if err != nil {
 		return &matchingError{o}
 	}
-	log.Println(7)
 	transactionStmt, err := tx.Prepare(`INSERT INTO transactions (balance_uuid,type,amount,fee_amount, trade)  VALUES($1,$2,$3,$4,$5)`)
 	if err != nil {
 		return &matchingError{o}
 	}
-	log.Println(8)
 	reservedBalanceStmt, err := tx.Prepare(`UPDATE balances SET reserved_balance = reserved_balance+$1 WHERE account_uuid = $2 AND currency = $3 RETURNING uuid`)
 	if err != nil {
 		return &matchingError{o}
 	}
-	log.Println(9)
 	balanceStmt, err := tx.Prepare(`UPDATE balances SET available_balance = available_balance+$1 WHERE account_uuid = $2 AND currency = $3 RETURNING uuid`)
 	if err != nil {
 		return &matchingError{o}
 	}
-	log.Println(10)
 	var market model.Market
 	marketStmt, err := tx.Prepare(`SELECT base_currency,quote_currency,currency_pair FROM markets WHERE uuid = $1`)
 	if err != nil {
 		return &matchingError{o}
 	}
-	log.Println(11)
 	if err = marketStmt.QueryRow(o.MarketUuid).Scan(&market.BaseCurrency, &market.QuoteCurrency, &market.CurrencyPair); err != nil {
 		return &matchingError{o}
 	}
-	log.Println(12)
 	for _, counterOrder := range counterOrders {
 		_, err = orderStmt.Exec(*counterOrder.Size, counterOrder.Status, counterOrder.Uuid)
 		if err != nil {
 			return &matchingError{o}
 		}
-		log.Println(13)
 		trade := trades[counterOrder.Uuid]
 		if err = tradeStmt.QueryRow(trade.Amount, trade.Price).Scan(&trade.Uuid); err != nil {
 			return &matchingError{o}
 		}
-		log.Println(14)
 		//The seller GETTING the quote currency.
 		var sellerQuoteTransaction model.Transaction
 		sellerQuoteTransaction.Amount = trade.Amount * trade.Price
@@ -268,10 +253,6 @@ func (m *Engine) match(o *model.Order) *matchingError {
 		if err != nil {
 			return &matchingError{o}
 		}
-		_, err = orderStmt.Exec(*counterOrder.Size, counterOrder.Status, counterOrder.Uuid)
-		if err != nil {
-			return &matchingError{o}
-		}
 	}
 
 	if *o.Size == o.InitialSize { // order did not get filled
@@ -282,12 +263,10 @@ func (m *Engine) match(o *model.Order) *matchingError {
 	if err != nil {
 		return &matchingError{o}
 	}
-	log.Println(20)
 
 	if err = tx.Commit(); err != nil {
 		return &matchingError{o}
 	}
-	log.Println(21)
 
 	return nil
 }
