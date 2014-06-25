@@ -2,7 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"github.com/bitnel/api/model"
+	"github.com/bitnel/bitnel/api/model"
 	"net/http"
 	"github.com/gorilla/context"
 	"time"

@@ -2,8 +2,8 @@ package main
 
 import (
 	"database/sql"
-	"github.com/bitnel/api/config"
-	"github.com/bitnel/api/matching"
+	"github.com/bitnel/bitnel/api/config"
+	"github.com/bitnel/bitnel/api/matching"
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"

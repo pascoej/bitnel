@@ -3,7 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"github.com/bitnel/api/model"
+	"github.com/bitnel/bitnel/api/model"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"net/http"
