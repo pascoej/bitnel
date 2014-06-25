@@ -3,8 +3,8 @@ package matching
 import (
 	"database/sql"
 	"fmt"
-	"github.com/bitnel/bitnel-api/model"
-	"github.com/bitnel/bitnel-api/money"
+	"github.com/bitnel/api/model"
+	"github.com/bitnel/api/money"
 	"log"
 	"time"
 )

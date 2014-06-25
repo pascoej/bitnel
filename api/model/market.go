@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/bitnel/bitnel-api/money"
+	"github.com/bitnel/api/money"
 )
 
 // A market defines what currency is being exchanged, and what currency is used

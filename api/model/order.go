@@ -4,7 +4,7 @@ import (
 	//"database/sql"
 	"errors"
 	//"fmt"
-	"github.com/bitnel/bitnel-api/money"
+	"github.com/bitnel/api/money"
 	"time"
 )
 
