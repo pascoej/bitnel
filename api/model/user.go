@@ -11,19 +11,19 @@ import (
 // Users have orders and identifying information. To place an order a user must
 // be authenticated and authorized (will come in later).
 type User struct {
-	Uuid string `json:"uuid"`
+	Uuid string `schema:"-" json:"uuid"`
 
 	// email and password are the 2 fields that can be nil
-	Email        *string   `json:"email"`
-	Password     *string   `json:"password,omitempty"`
-	PasswordHash []byte    `json:"-"`
-	CreatedAt    time.Time `json:"created_at"`
+	Email        string    `schema:"email" json:"email"`
+	Password     string    `schema:"password" json:"-"`
+	PasswordHash []byte    `schema:"-" json:"-"`
+	CreatedAt    time.Time `schema:"-" json:"created_at"`
 }
 
 func (u *User) HashPassword(cost int) error {
 	var err error
 
-	u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(*u.Password), cost)
+	u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(u.Password), cost)
 	if err != nil {
 		return errors.New("model: error hashing user password")
 	}
@@ -38,7 +38,7 @@ func (u *User) ComparePassword(pass string) bool {
 
 func (u *User) Rules() map[string][]vv.Rule {
 	return map[string][]vv.Rule{
-		"Name":  []vv.Rule{&vv.NonZero{}, &vv.Length{3, 25}},
-		"Email": []vv.Rule{&vv.NonZero{}, &vv.Email{}},
+		"Email":    []vv.Rule{&vv.NonZero{}, &vv.Email{}},
+		"Password": []vv.Rule{&vv.NonZero{}, &vv.Length{3, 25}},
 	}
 }

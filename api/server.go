@@ -21,6 +21,7 @@ var decoder = schema.NewDecoder()
 func main() {
 	var err error
 
+	log.Println("Loading application config")
 	appConfig, err = config.LoadConfig("config.json")
 	if err != nil {
 		log.Fatal(err)
@@ -43,9 +44,9 @@ func router() *mux.Router {
 
 	r.HandleFunc("/", index)
 
-	r.Handle("/user", apiHandler(createUser)).Methods("POST")
-	r.Handle("/user", apiHandler(updateUser)).Methods("PUT")
-	r.Handle("/user/accounts", use(getAccounts, oauthAuth)).Methods("GET")
+	r.Handle("/users", apiHandler(createUser)).Methods("POST")
+	r.Handle("/users", apiHandler(updateUser)).Methods("PUT")
+	r.Handle("/users/accounts", use(getAccounts, oauthAuth)).Methods("GET")
 
 	r.Handle("/markets/{currencyPair}/orders", use(listOrder, findMarket)).Methods("GET")
 

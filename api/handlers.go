@@ -28,7 +28,7 @@ func parseForm(r *http.Request, st interface{}) error {
 func createUser(w http.ResponseWriter, r *http.Request) *serverError {
 	var user model.User
 
-	if err := parseForm(r, user); err != nil {
+	if err := parseForm(r, &user); err != nil {
 		return writeError(w, errInputValidation)
 	}
 
@@ -45,7 +45,6 @@ func createUser(w http.ResponseWriter, r *http.Request) *serverError {
 	if err != nil {
 		return &serverError{err, "could not begin tx"}
 	}
-
 	stmt, err := tx.Prepare(`
 		INSERT INTO users (email, password_hash)
 		VALUES ($1, $2)
@@ -54,11 +53,9 @@ func createUser(w http.ResponseWriter, r *http.Request) *serverError {
 	if err != nil {
 		return &serverError{err, "could not prepare tx"}
 	}
-
 	if err = stmt.QueryRow(user.Email, user.PasswordHash).Scan(&user.Uuid, &user.Email, &user.CreatedAt); err != nil {
 		return &serverError{err, "cannot insert"}
 	}
-
 	if err = tx.Commit(); err != nil {
 		return &serverError{err, "cannot commit tx"}
 	}
