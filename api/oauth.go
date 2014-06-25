@@ -2,10 +2,11 @@ package main
 
 import (
 	"database/sql"
-	"github.com/bitnel/bitnel/api/model"
 	"net/http"
-	"github.com/gorilla/context"
 	"time"
+
+	"github.com/bitnel/bitnel/api/model"
+	"github.com/gorilla/context"
 )
 
 type oauthAccessToken struct {
@@ -14,7 +15,7 @@ type oauthAccessToken struct {
 	AccessToken string    `json:"access_token"`
 	ExpiresIn   int64     `json:"expires_in"`
 	CreatedAt   time.Time `json:"-"`
-	Scope 		string `json:"scope"`
+	Scope       string    `json:"scope"`
 }
 
 func oauthTokenHandler(w http.ResponseWriter, r *http.Request) *serverError {
@@ -31,7 +32,7 @@ func oauthTokenHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if password = r.Form.Get("password"); password == "" {
 		return writeError(w, errInputValidation)
 	}
-	scope := r.Form.Get("scope");
+	scope := r.Form.Get("scope")
 
 	stmt, err := db.Prepare("SELECT uuid, password_hash FROM users WHERE email = $1")
 	if err != nil {
@@ -60,7 +61,7 @@ func oauthTokenHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if err := stmt.QueryRow(user.Uuid, scope).Scan(&token.AccessToken, &token.ExpiresIn, &token.Scope); err != nil {
 		return &serverError{err, "unable to exec oauth_tokens insert"}
 	}
-	context.Set(r,reqToken,token)
+	context.Set(r, reqToken, token)
 
 	return writeJson(w, token)
 }

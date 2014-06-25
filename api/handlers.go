@@ -3,36 +3,21 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"log"
+	"net/http"
+	"strings"
+
 	"github.com/bitnel/bitnel/api/model"
 	"github.com/bitnel/bitnel/api/money"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"log"
-	"net/http"
-	"strings"
 )
 
-// This serves the root path of our API. Be friendly; say hello.
-func indexHandler(w http.ResponseWriter, r *http.Request) *serverError {
-	fmt.Fprintln(w, "Welcome to the Bitnel API!")
-
-	return nil
-}
-
-// We define our own not found handler because we dislike the default Gorilla
-// 404 message.
-func notFoundHandler(w http.ResponseWriter, r *http.Request) *serverError {
-	return writeError(w, errNotFound)
-}
-
-// Handles user creation
-// POST /users
-func createUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
+func createUser(w http.ResponseWriter, r *http.Request) *serverError {
 	var user model.User
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		return &serverError{err, "can't decode req"}
+		return writeError(w, errInputValidation)
 	}
 
 	if user.Email == nil || !(len(*user.Email) >= 3) || !(len(*user.Email) <= 256) {
@@ -71,25 +56,23 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	return writeJson(w, user)
 }
 
-// Handles updating a user's information
-func updateUserHandler(w http.ResponseWriter, r *http.Request) *serverError {
+func updateUser(w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
 }
 
-// cancels. does not delete
-func deleteOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
+func deleteOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	token, ok := context.Get(r, reqToken).(oauthAccessToken)
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
 	}
-	if (!strings.Contains(token.Scope,"orders")) {
+	if !strings.Contains(token.Scope, "orders") {
 		return writeError(w, errNotFound)
 	}
 	order, ok := context.Get(r, reqOrder).(model.Order)
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
 	}
-	if (!strings.Contains(token.Scope,"e")) {
+	if !strings.Contains(token.Scope, "e") {
 		return writeError(w, errNotFound)
 	}
 
@@ -100,9 +83,7 @@ func deleteOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
 }
 
-// Lists orders associated with a market
-// GET /markets/{currencyPair}/orders
-func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
+func listOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	stmt, err := db.Prepare(`
 		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
 		FROM orders
@@ -138,8 +119,7 @@ func listOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	return writeJson(w, orders)
 }
 
-// GET /user/accounts
-func getAccountsHandler(w http.ResponseWriter, r *http.Request) *serverError {
+func getAccounts(w http.ResponseWriter, r *http.Request) *serverError {
 	user, ok := context.Get(r, reqUser).(model.User)
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
@@ -171,9 +151,7 @@ func getAccountsHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	return writeJson(w, accounts)
 }
 
-// Handles getting the information of an order
-// GET /accounts/{accountUuid}/orders/{orderUuid}
-func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
+func getOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	orderUuid := mux.Vars(r)["orderUuid"]
 
 	stmt, err := db.Prepare(`
@@ -200,9 +178,7 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	return writeJson(w, order)
 }
 
-// Handles the creation of an order
-// POST /accounts/{accountUuid}/orders
-func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
+func createOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	//market, ok := context.Get(r, reqMarket).(model.Market)
 	//if !ok {
 	//	return &serverError{errors.New("errors"), "error"}
@@ -215,7 +191,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request) *serverError {
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
 	}
-	if (!strings.Contains(token.Scope,"orders")) {
+	if !strings.Contains(token.Scope, "orders") {
 		return writeError(w, errNotFound)
 	}
 	if order.Size == nil || !(*order.Size >= money.Satoshi) || !(*order.Size <= money.Bitcoin*1000) {

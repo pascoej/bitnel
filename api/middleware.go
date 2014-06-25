@@ -3,11 +3,12 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"net/http"
+	"strings"
+
 	"github.com/bitnel/bitnel/api/model"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"net/http"
-	"strings"
 )
 
 // This type is used for keys for the context library
@@ -22,7 +23,7 @@ const (
 )
 
 // This middleware wraps around all handlers concerning markets.
-func marketFinder(fn apiHandler) apiHandler {
+func findMarket(fn apiHandler) apiHandler {
 	return func(w http.ResponseWriter, r *http.Request) *serverError {
 		pair := mux.Vars(r)["currencyPair"]
 
@@ -48,7 +49,7 @@ func marketFinder(fn apiHandler) apiHandler {
 	}
 }
 
-func accountFinder(fn apiHandler) apiHandler {
+func findAccount(fn apiHandler) apiHandler {
 	return func(w http.ResponseWriter, r *http.Request) *serverError {
 		uuid := mux.Vars(r)["accountUuid"]
 
@@ -81,7 +82,7 @@ func accountFinder(fn apiHandler) apiHandler {
 	}
 }
 
-func oauthTokenUserFinder(fn apiHandler) apiHandler {
+func oauthAuth(fn apiHandler) apiHandler {
 	return func(w http.ResponseWriter, r *http.Request) *serverError {
 		var authHeader string
 		if authHeader = r.Header.Get("Authorization"); authHeader == "" {
@@ -116,7 +117,7 @@ func oauthTokenUserFinder(fn apiHandler) apiHandler {
 	}
 }
 
-func orderFinder(fn apiHandler) apiHandler {
+func findOrder(fn apiHandler) apiHandler {
 	return func(w http.ResponseWriter, r *http.Request) *serverError {
 		orderUuid := mux.Vars(r)["orderUuid"]
 
