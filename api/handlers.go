@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -9,29 +8,38 @@ import (
 
 	"github.com/bitnel/bitnel/api/model"
 	"github.com/bitnel/bitnel/api/money"
+	"github.com/bitnel/bitnel/api/validator"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 )
 
+func parseForm(r *http.Request, st interface{}) error {
+	if err := r.ParseForm(); err != nil {
+		return errors.New("unable to parse form")
+	}
+
+	if err := decoder.Decode(st, r.PostForm); err != nil {
+		return errors.New("can't decode form")
+	}
+
+	return nil
+}
+
 func createUser(w http.ResponseWriter, r *http.Request) *serverError {
 	var user model.User
 
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+	if err := parseForm(r, user); err != nil {
 		return writeError(w, errInputValidation)
 	}
 
-	if user.Email == nil || !(len(*user.Email) >= 3) || !(len(*user.Email) <= 256) {
+	valid := validator.New(&user)
+	if ok, _ := valid.Validate(nil); !ok {
 		return writeError(w, errInputValidation)
 	}
 
-	if user.Password == nil || !(len(*user.Password) >= 6) || !(len(*user.Password) <= 258) {
-		return writeError(w, errInputValidation)
-	}
 	if err := user.HashPassword(appConfig.BcryptCost); err != nil {
 		return &serverError{err, "could not hash user pw"}
 	}
-
-	user.Password = nil
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -48,10 +56,12 @@ func createUser(w http.ResponseWriter, r *http.Request) *serverError {
 	}
 
 	if err = stmt.QueryRow(user.Email, user.PasswordHash).Scan(&user.Uuid, &user.Email, &user.CreatedAt); err != nil {
-		return &serverError{err, "could not insert"}
+		return &serverError{err, "cannot insert"}
 	}
 
-	err = tx.Commit()
+	if err = tx.Commit(); err != nil {
+		return &serverError{err, "cannot commit tx"}
+	}
 
 	return writeJson(w, user)
 }
@@ -183,10 +193,13 @@ func createOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	//if !ok {
 	//	return &serverError{errors.New("errors"), "error"}
 	//}
+
 	var order model.Order
-	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
-		return &serverError{err, "could not decode input createOrderHandler"}
+
+	if err := parseForm(r, order); err != nil {
+		return writeError(w, errInputValidation)
 	}
+
 	token, ok := context.Get(r, reqToken).(oauthAccessToken)
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}

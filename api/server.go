@@ -9,12 +9,14 @@ import (
 	"github.com/bitnel/bitnel/api/config"
 	"github.com/bitnel/bitnel/api/matching"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/schema"
 	_ "github.com/lib/pq"
 )
 
 var appConfig *config.Config
 var db *sql.DB
 var globalMatchingEngine *matching.Engine
+var decoder = schema.NewDecoder()
 
 func main() {
 	var err error

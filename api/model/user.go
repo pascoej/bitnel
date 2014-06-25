@@ -1,9 +1,11 @@
 package model
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
 	"errors"
 	"time"
+
+	"code.google.com/p/go.crypto/bcrypt"
+	vv "github.com/bitnel/bitnel/api/validator"
 )
 
 // Users have orders and identifying information. To place an order a user must
@@ -32,4 +34,11 @@ func (u *User) HashPassword(cost int) error {
 func (u *User) ComparePassword(pass string) bool {
 	// CompareHashAndPassword returns nil on success
 	return nil == bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(pass))
+}
+
+func (u *User) Rules() map[string][]vv.Rule {
+	return map[string][]vv.Rule{
+		"Name":  []vv.Rule{&vv.NonZero{}, &vv.Length{3, 25}},
+		"Email": []vv.Rule{&vv.NonZero{}, &vv.Email{}},
+	}
 }
