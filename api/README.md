@@ -1,6 +1,6 @@
 # bitnel-api
 
-Here we go again...
+Here we go again... Let's get rly rich
 
 ## Database migrations
 
@@ -11,3 +11,4 @@ Make sure to copy `db/dbconf.yml.example` to `db/dbconf.yml` and edit as nesseca
 ## Configuration
 
 At the moment, `config.json` is read in the current directory.
+
