@@ -79,6 +79,10 @@ func deleteOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
 	}
+	account, ok := context.Get(r,reqAccount).(model.Account)
+	if account.Uuid != *order.AccountUuid {
+		return  writeError(w, errNotFound)
+	}
 	if !strings.Contains(token.Scope, "e") {
 		return writeError(w, errNotFound)
 	}
