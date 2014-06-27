@@ -15,7 +15,7 @@ type oauthAccessToken struct {
 	AccessToken string    `json:"access_token"`
 	ExpiresIn   int64     `json:"expires_in"`
 	CreatedAt   time.Time `json:"-"`
-	Scope       string    `json:"scope"`
+	Scope       string    `json:"scope"` //Valid permissions all, accounts.view, order.create, order.view, user.update, order.cancel
 }
 
 func oauthTokenHandler(w http.ResponseWriter, r *http.Request) *serverError {
@@ -33,6 +33,9 @@ func oauthTokenHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		return writeError(w, errInputValidation)
 	}
 	scope := r.Form.Get("scope")
+	if (scope == "") {
+		scope = "all"
+	}
 
 	stmt, err := db.Prepare("SELECT uuid, password_hash FROM users WHERE email = $1")
 	if err != nil {

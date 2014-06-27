@@ -72,7 +72,7 @@ func deleteOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
 	}
-	if !strings.Contains(token.Scope, "orders") {
+	if !strings.Contains(token.Scope, "order.delete") && !strings.Contains(token.Scope, "all") {
 		return writeError(w, errNotFound)
 	}
 	order, ok := context.Get(r, reqOrder).(model.Order)
@@ -134,6 +134,13 @@ func getAccounts(w http.ResponseWriter, r *http.Request) *serverError {
 	user, ok := context.Get(r, reqUser).(model.User)
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
+	}
+	token, ok := context.Get(r, reqToken).(oauthAccessToken)
+	if !ok {
+		return &serverError{errors.New("this should not happen"), "this should not happen"}
+	}
+	if !strings.Contains(token.Scope, "accounts.view")  && !strings.Contains(token.Scope, "all") {
+		return writeError(w, errNotFound)
 	}
 
 	stmt, err := db.Prepare("SELECT uuid, user_uuid FROM accounts WHERE user_uuid = $1")
@@ -205,7 +212,7 @@ func createOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
 	}
-	if !strings.Contains(token.Scope, "orders") {
+	if !strings.Contains(token.Scope, "order.create")  && !strings.Contains(token.Scope, "all") {
 		return writeError(w, errNotFound)
 	}
 	if order.Size == nil || !(*order.Size >= money.Satoshi) || !(*order.Size <= money.Bitcoin*1000) {
