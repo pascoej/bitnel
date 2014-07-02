@@ -25,6 +25,7 @@ func parseForm(r *http.Request, st interface{}) error {
 	return nil
 }
 
+// POST /users
 func createUser(w http.ResponseWriter, r *http.Request) *serverError {
 	var user model.User
 
@@ -63,38 +64,72 @@ func createUser(w http.ResponseWriter, r *http.Request) *serverError {
 	return writeJson(w, user)
 }
 
+// PUT /user
 func updateUser(w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
 }
 
-func deleteOrder(w http.ResponseWriter, r *http.Request) *serverError {
+// GET /user/accounts
+func getUserAccounts(w http.ResponseWriter, r *http.Request) *serverError {
+	user, ok := context.Get(r, reqUser).(model.User)
+	if !ok {
+		return &serverError{errors.New("this should not happen"), "this should not happen"}
+	}
 	token, ok := context.Get(r, reqToken).(oauthAccessToken)
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
 	}
-	if !strings.Contains(token.Scope, "order.delete") && !strings.Contains(token.Scope, "all") {
-		return writeError(w, errNotFound)
-	}
-	order, ok := context.Get(r, reqOrder).(model.Order)
-	if !ok {
-		return &serverError{errors.New("this should not happen"), "this should not happen"}
-	}
-	account, ok := context.Get(r,reqAccount).(model.Account)
-	if account.Uuid != *order.AccountUuid {
-		return  writeError(w, errNotFound)
-	}
-	if !strings.Contains(token.Scope, "e") {
+	if !strings.Contains(token.Scope, "accounts.view") && !strings.Contains(token.Scope, "all") {
 		return writeError(w, errNotFound)
 	}
 
-	if err := globalMatchingEngine.Cancel(&order); err != nil {
-		return writeError(w, errTooBusy)
+	stmt, err := db.Prepare("SELECT uuid, user_uuid FROM accounts WHERE user_uuid = $1")
+	if err != nil {
+		return &serverError{err, "err preparing get accounts"}
 	}
 
+	var accounts []*model.Account
+
+	rows, err := stmt.Query(user.Uuid)
+	if err != nil {
+		return &serverError{err, "err getting accts"}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var account model.Account
+		err = rows.Scan(&account.Uuid, &account.UserUuid)
+		if err != nil {
+			return &serverError{err, "err getting acct"}
+		}
+
+		accounts = append(accounts, &account)
+	}
+
+	return writeJson(w, accounts)
+}
+
+// GET /markets
+func listMarkets(w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
 }
 
-func listOrder(w http.ResponseWriter, r *http.Request) *serverError {
+// GET /market/{{currencyPair}}
+func getMarket(w http.ResponseWriter, r *http.Request) *serverError {
+	return nil
+}
+
+// GET /market/{{currencyPair}}/orders
+func listMarketOrders(w http.ResponseWriter, r *http.Request) *serverError {
+	return nil
+}
+
+func getAccount(w http.ResponseWriter, r *http.Request) *serverError {
+	return nil
+}
+
+// GET /accounts//{{accountUuid}}/orders
+func listAccountOrders(w http.ResponseWriter, r *http.Request) *serverError {
 	stmt, err := db.Prepare(`
 		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
 		FROM orders
@@ -130,73 +165,8 @@ func listOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	return writeJson(w, orders)
 }
 
-func getAccounts(w http.ResponseWriter, r *http.Request) *serverError {
-	user, ok := context.Get(r, reqUser).(model.User)
-	if !ok {
-		return &serverError{errors.New("this should not happen"), "this should not happen"}
-	}
-	token, ok := context.Get(r, reqToken).(oauthAccessToken)
-	if !ok {
-		return &serverError{errors.New("this should not happen"), "this should not happen"}
-	}
-	if !strings.Contains(token.Scope, "accounts.view")  && !strings.Contains(token.Scope, "all") {
-		return writeError(w, errNotFound)
-	}
-
-	stmt, err := db.Prepare("SELECT uuid, user_uuid FROM accounts WHERE user_uuid = $1")
-	if err != nil {
-		return &serverError{err, "err preparing get accounts"}
-	}
-
-	var accounts []*model.Account
-
-	rows, err := stmt.Query(user.Uuid)
-	if err != nil {
-		return &serverError{err, "err getting accts"}
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var account model.Account
-		err = rows.Scan(&account.Uuid, &account.UserUuid)
-		if err != nil {
-			return &serverError{err, "err getting acct"}
-		}
-
-		accounts = append(accounts, &account)
-	}
-
-	return writeJson(w, accounts)
-}
-
-func getOrder(w http.ResponseWriter, r *http.Request) *serverError {
-	orderUuid := mux.Vars(r)["orderUuid"]
-
-	stmt, err := db.Prepare(`
-		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
-		FROM orders
-		WHERE uuid = $1
-	`)
-	if err != nil {
-		return &serverError{err, "could not prepare stmt"}
-	}
-
-	var order model.Order
-	err = stmt.QueryRow(orderUuid).Scan(
-		&order.Uuid,
-		&order.Size,
-		&order.InitialSize,
-		&order.Price, order.Side,
-		&order.Status,
-		&order.CreatedAt)
-	if err != nil {
-		return &serverError{err, "could not get order values"}
-	}
-
-	return writeJson(w, order)
-}
-
-func createOrder(w http.ResponseWriter, r *http.Request) *serverError {
+// POST /accounts/{{accountUuid}}/orders
+func createAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	//market, ok := context.Get(r, reqMarket).(model.Market)
 	//if !ok {
 	//	return &serverError{errors.New("errors"), "error"}
@@ -212,7 +182,7 @@ func createOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
 	}
-	if !strings.Contains(token.Scope, "order.create")  && !strings.Contains(token.Scope, "all") {
+	if !strings.Contains(token.Scope, "order.create") && !strings.Contains(token.Scope, "all") {
 		return writeError(w, errNotFound)
 	}
 	if order.Size == nil || !(*order.Size >= money.Satoshi) || !(*order.Size <= money.Bitcoin*1000) {
@@ -300,4 +270,60 @@ func createOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	globalMatchingEngine.Add(&order)
 
 	return writeJson(w, order)
+}
+
+// GET /accounts/{{accountUuid}}/orders/{{orderUuid}}
+func getAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
+	orderUuid := mux.Vars(r)["orderUuid"]
+
+	stmt, err := db.Prepare(`
+		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
+		FROM orders
+		WHERE uuid = $1
+	`)
+	if err != nil {
+		return &serverError{err, "could not prepare stmt"}
+	}
+
+	var order model.Order
+	err = stmt.QueryRow(orderUuid).Scan(
+		&order.Uuid,
+		&order.Size,
+		&order.InitialSize,
+		&order.Price, order.Side,
+		&order.Status,
+		&order.CreatedAt)
+	if err != nil {
+		return &serverError{err, "could not get order values"}
+	}
+
+	return writeJson(w, order)
+}
+
+// DELETE /accounts/{{accountUuid}}/orders/{{orderUuid}}
+func cancelAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
+	token, ok := context.Get(r, reqToken).(oauthAccessToken)
+	if !ok {
+		return &serverError{errors.New("this should not happen"), "this should not happen"}
+	}
+	if !strings.Contains(token.Scope, "order.delete") && !strings.Contains(token.Scope, "all") {
+		return writeError(w, errNotFound)
+	}
+	order, ok := context.Get(r, reqOrder).(model.Order)
+	if !ok {
+		return &serverError{errors.New("this should not happen"), "this should not happen"}
+	}
+	account, ok := context.Get(r, reqAccount).(model.Account)
+	if account.Uuid != *order.AccountUuid {
+		return writeError(w, errNotFound)
+	}
+	if !strings.Contains(token.Scope, "e") {
+		return writeError(w, errNotFound)
+	}
+
+	if err := globalMatchingEngine.Cancel(&order); err != nil {
+		return writeError(w, errTooBusy)
+	}
+
+	return nil
 }

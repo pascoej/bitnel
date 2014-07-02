@@ -21,7 +21,6 @@ var decoder = schema.NewDecoder()
 func main() {
 	var err error
 
-	log.Println("Loading application config")
 	appConfig, err = config.LoadConfig("config.json")
 	if err != nil {
 		log.Fatal(err)
@@ -45,14 +44,19 @@ func router() *mux.Router {
 	r.HandleFunc("/", index)
 
 	r.Handle("/users", apiHandler(createUser)).Methods("POST")
-	r.Handle("/users", apiHandler(updateUser)).Methods("PUT")
-	r.Handle("/users/accounts", use(getAccounts, oauthAuth)).Methods("GET")
 
-	r.Handle("/markets/{currencyPair}/orders", use(listOrder, findMarket)).Methods("GET")
+	r.Handle("/user", apiHandler(updateUser)).Methods("PUT")
+	r.Handle("/user/accounts", use(getUserAccounts, oauthAuth)).Methods("GET")
 
-	r.Handle("/accounts/{accountUuid}/orders/{orderUuid}", use(getOrder, oauthAuth, findAccount, findOrder)).Methods("GET")
-	r.Handle("/accounts/{accountUuid}/orders", use(createOrder, findAccount, oauthAuth)).Methods("POST")
-	r.Handle("/accounts/{accountUuid}/orders/{orderUuid}", use(deleteOrder, oauthAuth, findAccount, findOrder)).Methods("DELETE")
+	r.Handle("/markets", apiHandler(listMarkets)).Methods("GET")
+	r.Handle("/markets/{currencyPair}", use(getMarket, findMarket)).Methods("GET")
+	r.Handle("/markets/{currencyPair}/orders", use(listMarketOrders, findMarket)).Methods("GET")
+
+	r.Handle("/accounts/{accountUuid}", use(getAccount, findAccount)).Methods("GET")
+	r.Handle("/accounts/{accountUuid}/orders", use(listAccountOrders, findAccount, oauthAuth)).Methods("GET")
+	r.Handle("/accounts/{accountUuid}/orders", use(createAccountOrder, findAccount, oauthAuth)).Methods("POST")
+	r.Handle("/accounts/{accountUuid}/orders/{orderUuid}", use(getAccountOrder, oauthAuth, findAccount, findOrder)).Methods("GET")
+	r.Handle("/accounts/{accountUuid}/orders/{orderUuid}", use(cancelAccountOrder, oauthAuth, findAccount, findOrder)).Methods("DELETE")
 
 	r.NotFoundHandler = http.Handler(apiHandler(notFound))
 
