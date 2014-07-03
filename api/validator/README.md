@@ -3,6 +3,7 @@
 At least it works. Written so that validation may be flexible.
 
 Usage:
+
     type pers struct {
         Name  string
         Email string
