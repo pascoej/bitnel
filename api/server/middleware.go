@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"database/sql"
@@ -24,10 +24,10 @@ const (
 
 // This middleware wraps around all handlers concerning markets.
 func findMarket(fn apiHandler) apiHandler {
-	return func(w http.ResponseWriter, r *http.Request) *serverError {
+	return func(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 		pair := mux.Vars(r)["currencyPair"]
 
-		stmt, err := db.Prepare(`SELECT uuid, base_currency, quote_currency, currency_pair
+		stmt, err := s.db.Prepare(`SELECT uuid, base_currency, quote_currency, currency_pair
 		FROM markets
 		WHERE currency_pair = $1`)
 		if err != nil {
@@ -45,12 +45,12 @@ func findMarket(fn apiHandler) apiHandler {
 
 		context.Set(r, reqMarket, market)
 
-		return fn(w, r)
+		return fn(s, w, r)
 	}
 }
 
 func findAccount(fn apiHandler) apiHandler {
-	return func(w http.ResponseWriter, r *http.Request) *serverError {
+	return func(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 		uuid := mux.Vars(r)["accountUuid"]
 
 		requestedUser, ok := context.Get(r, reqUser).(model.User)
@@ -58,7 +58,7 @@ func findAccount(fn apiHandler) apiHandler {
 			return &serverError{errors.New("wtf happeend"), "wtf happened"}
 		}
 
-		stmt, err := db.Prepare(`SELECT uuid,user_uuid FROM accounts WHERE uuid = $1`)
+		stmt, err := s.db.Prepare(`SELECT uuid,user_uuid FROM accounts WHERE uuid = $1`)
 		if err != nil {
 			return &serverError{err, "err preparing acct getter"}
 		}
@@ -78,12 +78,12 @@ func findAccount(fn apiHandler) apiHandler {
 
 		context.Set(r, reqAccount, account)
 
-		return fn(w, r)
+		return fn(s, w, r)
 	}
 }
 
 func oauthAuth(fn apiHandler) apiHandler {
-	return func(w http.ResponseWriter, r *http.Request) *serverError {
+	return func(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 		var authHeader string
 		if authHeader = r.Header.Get("Authorization"); authHeader == "" {
 			return writeError(w, errInputValidation)
@@ -94,7 +94,7 @@ func oauthAuth(fn apiHandler) apiHandler {
 			return writeError(w, errInputValidation)
 		}
 
-		stmt, err := db.Prepare(`SELECT uuid, email, created_at
+		stmt, err := s.db.Prepare(`SELECT uuid, email, created_at
 			FROM users WHERE uuid = (
 			SELECT user_uuid FROM oauth_tokens WHERE access_token = $1 AND expires_at > NOW())`)
 		if err != nil {
@@ -113,12 +113,12 @@ func oauthAuth(fn apiHandler) apiHandler {
 
 		context.Set(r, reqUser, user)
 
-		return fn(w, r)
+		return fn(s, w, r)
 	}
 }
 
 func findOrder(fn apiHandler) apiHandler {
-	return func(w http.ResponseWriter, r *http.Request) *serverError {
+	return func(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 		orderUuid := mux.Vars(r)["orderUuid"]
 
 		requestedAccount, ok := context.Get(r, reqAccount).(model.Account)
@@ -126,7 +126,7 @@ func findOrder(fn apiHandler) apiHandler {
 			return &serverError{errors.New("wtf happeend"), "wtf happened"}
 		}
 
-		stmt, err := db.Prepare(`SELECT uuid FROM orders WHERE uuid = $1 AND account_uuid = $2`)
+		stmt, err := s.db.Prepare(`SELECT uuid FROM orders WHERE uuid = $1 AND account_uuid = $2`)
 		if err != nil {
 			return &serverError{err, "err preparing order getter"}
 		}
@@ -142,6 +142,6 @@ func findOrder(fn apiHandler) apiHandler {
 
 		context.Set(r, reqOrder, order)
 
-		return fn(w, r)
+		return fn(s, w, r)
 	}
 }

@@ -1,22 +1,14 @@
-package main
+package server
 
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 )
 
 // API handler is a custom type that gives us the chance to log server errors
 // when handlers return a server error.
-type apiHandler func(http.ResponseWriter, *http.Request) *serverError
-
-func (fn apiHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if err := fn(w, r); err != nil {
-		log.Println(err.Error())
-		writeError(w, errServerError)
-	}
-}
+type apiHandler func(*server, http.ResponseWriter, *http.Request) *serverError
 
 // A server error is returned by handlers signaling that some error the handler
 // encountered should be logged for investigation.

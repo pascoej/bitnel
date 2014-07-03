@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"errors"
@@ -13,12 +13,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func parseForm(r *http.Request, st interface{}) error {
+func parseForm(s *server, r *http.Request, st interface{}) error {
 	if err := r.ParseForm(); err != nil {
 		return errors.New("unable to parse form")
 	}
 
-	if err := decoder.Decode(st, r.PostForm); err != nil {
+	if err := s.decoder.Decode(st, r.PostForm); err != nil {
 		return errors.New("can't decode form")
 	}
 
@@ -26,10 +26,10 @@ func parseForm(r *http.Request, st interface{}) error {
 }
 
 // POST /users
-func createUser(w http.ResponseWriter, r *http.Request) *serverError {
+func createUser(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	var user model.User
 
-	if err := parseForm(r, &user); err != nil {
+	if err := parseForm(s, r, &user); err != nil {
 		return writeError(w, errInputValidation)
 	}
 
@@ -38,11 +38,11 @@ func createUser(w http.ResponseWriter, r *http.Request) *serverError {
 		return writeError(w, errInputValidation)
 	}
 
-	if err := user.HashPassword(appConfig.BcryptCost); err != nil {
+	if err := user.HashPassword(s.config.BcryptCost); err != nil {
 		return &serverError{err, "could not hash user pw"}
 	}
 
-	tx, err := db.Begin()
+	tx, err := s.db.Begin()
 	if err != nil {
 		return &serverError{err, "could not begin tx"}
 	}
@@ -65,12 +65,12 @@ func createUser(w http.ResponseWriter, r *http.Request) *serverError {
 }
 
 // PUT /user
-func updateUser(w http.ResponseWriter, r *http.Request) *serverError {
+func updateUser(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
 }
 
 // GET /user/accounts
-func getUserAccounts(w http.ResponseWriter, r *http.Request) *serverError {
+func listUserAccounts(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	user, ok := context.Get(r, reqUser).(model.User)
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
@@ -83,7 +83,7 @@ func getUserAccounts(w http.ResponseWriter, r *http.Request) *serverError {
 		return writeError(w, errNotFound)
 	}
 
-	stmt, err := db.Prepare("SELECT uuid, user_uuid FROM accounts WHERE user_uuid = $1")
+	stmt, err := s.db.Prepare("SELECT uuid, user_uuid FROM accounts WHERE user_uuid = $1")
 	if err != nil {
 		return &serverError{err, "err preparing get accounts"}
 	}
@@ -110,27 +110,27 @@ func getUserAccounts(w http.ResponseWriter, r *http.Request) *serverError {
 }
 
 // GET /markets
-func listMarkets(w http.ResponseWriter, r *http.Request) *serverError {
+func listMarkets(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
 }
 
 // GET /market/{{currencyPair}}
-func getMarket(w http.ResponseWriter, r *http.Request) *serverError {
+func getMarket(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
 }
 
 // GET /market/{{currencyPair}}/orders
-func listMarketOrders(w http.ResponseWriter, r *http.Request) *serverError {
+func listMarketOrders(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
 }
 
-func getAccount(w http.ResponseWriter, r *http.Request) *serverError {
+func getAccount(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	return nil
 }
 
 // GET /accounts//{{accountUuid}}/orders
-func listAccountOrders(w http.ResponseWriter, r *http.Request) *serverError {
-	stmt, err := db.Prepare(`
+func listAccountOrders(s *server, w http.ResponseWriter, r *http.Request) *serverError {
+	stmt, err := s.db.Prepare(`
 		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
 		FROM orders
 		WHERE market_uuid = $1 ORDER BY created_at DESC 
@@ -166,7 +166,7 @@ func listAccountOrders(w http.ResponseWriter, r *http.Request) *serverError {
 }
 
 // POST /accounts/{{accountUuid}}/orders
-func createAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
+func createAccountOrder(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	//market, ok := context.Get(r, reqMarket).(model.Market)
 	//if !ok {
 	//	return &serverError{errors.New("errors"), "error"}
@@ -174,7 +174,7 @@ func createAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
 
 	var order model.Order
 
-	if err := parseForm(r, order); err != nil {
+	if err := parseForm(s, r, order); err != nil {
 		return writeError(w, errInputValidation)
 	}
 
@@ -197,7 +197,7 @@ func createAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
 		return writeError(w, errInputValidation)
 	}
 	log.Println(order.MarketUuid)
-	tx, err := db.Begin()
+	tx, err := s.db.Begin()
 	if err != nil {
 		return &serverError{err, "cannot begin tx"}
 	}
@@ -267,16 +267,16 @@ func createAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
 	if err = tx.Commit(); err != nil {
 		return &serverError{err, "tx commit err"}
 	}
-	globalMatchingEngine.Add(&order)
+	s.matchingEngine.Add(&order)
 
 	return writeJson(w, order)
 }
 
 // GET /accounts/{{accountUuid}}/orders/{{orderUuid}}
-func getAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
+func getAccountOrder(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	orderUuid := mux.Vars(r)["orderUuid"]
 
-	stmt, err := db.Prepare(`
+	stmt, err := s.db.Prepare(`
 		SELECT uuid, market_uuid, size, initial_size, price, side, status, created_at
 		FROM orders
 		WHERE uuid = $1
@@ -301,7 +301,7 @@ func getAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
 }
 
 // DELETE /accounts/{{accountUuid}}/orders/{{orderUuid}}
-func cancelAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
+func cancelAccountOrder(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	token, ok := context.Get(r, reqToken).(oauthAccessToken)
 	if !ok {
 		return &serverError{errors.New("this should not happen"), "this should not happen"}
@@ -321,7 +321,7 @@ func cancelAccountOrder(w http.ResponseWriter, r *http.Request) *serverError {
 		return writeError(w, errNotFound)
 	}
 
-	if err := globalMatchingEngine.Cancel(&order); err != nil {
+	if err := s.matchingEngine.Cancel(&order); err != nil {
 		return writeError(w, errTooBusy)
 	}
 

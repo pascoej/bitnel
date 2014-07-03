@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"database/sql"
@@ -18,7 +18,7 @@ type oauthAccessToken struct {
 	Scope       string    `json:"scope"` //Valid permissions all, accounts.view, order.create, order.view, user.update, order.cancel
 }
 
-func oauthTokenHandler(w http.ResponseWriter, r *http.Request) *serverError {
+func oauthTokenHandler(s *server, w http.ResponseWriter, r *http.Request) *serverError {
 	if err := r.ParseForm(); err != nil {
 		return &serverError{err, "unable to r.ParseForm()"}
 	}
@@ -33,11 +33,11 @@ func oauthTokenHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		return writeError(w, errInputValidation)
 	}
 	scope := r.Form.Get("scope")
-	if (scope == "") {
+	if scope == "" {
 		scope = "all"
 	}
 
-	stmt, err := db.Prepare("SELECT uuid, password_hash FROM users WHERE email = $1")
+	stmt, err := s.db.Prepare("SELECT uuid, password_hash FROM users WHERE email = $1")
 	if err != nil {
 		return &serverError{err, "unable to prepare stmt"}
 	}
@@ -53,7 +53,7 @@ func oauthTokenHandler(w http.ResponseWriter, r *http.Request) *serverError {
 		return writeError(w, errNotFound)
 	}
 
-	stmt, err = db.Prepare(`INSERT INTO oauth_tokens (user_uuid, access_token, expires_at, created_at, scope)
+	stmt, err = s.db.Prepare(`INSERT INTO oauth_tokens (user_uuid, access_token, expires_at, created_at, scope)
 		VALUES ($1, uuid_generate_v4(), NOW()+'1 day'::interval, NOW(), $2)
 		RETURNING access_token, EXTRACT(EPOCH FROM (expires_at-NOW())), scope`)
 	if err != nil {
