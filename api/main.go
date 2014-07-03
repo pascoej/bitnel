@@ -14,5 +14,5 @@ func main() {
 	}
 
 	svr := server.New(config)
-	svr.Start()
+	log.Fatal(svr.Start())
 }
