@@ -88,17 +88,22 @@ class WalletHandler
     end
   end
   def onOutput tx, out, idx, conf
+    puts "swag swag like calliou"
     script = Bitcoin::Script.new(out.pk_script)
     address = script.get_address
     value = out.value
-    record = Address.first(:address => address, :currency => @db_currency)
+    @db_currency = Currency.first(:id => @db_currency[:id])
+    record = Address.first(:address => address)
     if record != nil
+      puts "swag"
       onTransaction(address,value,tx,out,idx,conf)
     end
   end
   def onTransaction addr, value, tx, out, idx, conf
     confirmed = conf > @confirms
-    db_out = Output.first_or_create(:tx_hash => tx.hash, :address => addr, :value => value, :idx => idx, :currency => @db_currency, :time => Time.now)
+    puts "too much swag"
+    @db_currency = Currency.first(:id => @db_currency[:id])
+    db_out = Output.first_or_create(:tx_hash => tx.hash, :address => addr, :value => value, :idx => idx, :currency => @db_currency, :date => Time.now)
     if (!db_out.save)
       db_out.errors.each { |e| puts e.inspect }
     end
@@ -161,7 +166,7 @@ NODE_CONFIGS = {
     "rgt" => {
     :network => :regtest,
     :listen => ["0.0.0.0", 7001],
-    :connect => [],
+    :connect => ["127.0.0.1",8333],
     :command => ["127.0.0.1", 6001],
     :storage => "utxo::sqlite://~/.bitcoin-ruby/<network>/blocks.db",
     :announce => false,
@@ -175,8 +180,8 @@ NODE_CONFIGS = {
     :epoll_user => nil,
     :addr_file => "~/.bitcoin-ruby/<network>/peers.json",
     :log => {
-        :network => :error,
-        :storage => :error,
+        :network => :info,
+        :storage => :info,
     },
     :max => {
         :connections_out => 8,

@@ -26,16 +26,17 @@ class WalletServer
   def initialize
     db_currency = Currency.first(:symbol=>"rgt")
     currency_data = CurrencyData.new(db_currency)
-    db_btc_currency = Currency.first(:symbol=>"btc")
-    btc_data = CurrencyData.new(db_btc_currency)
-    @wallets = {"rgt" => Wallet.new(currency_data), "btc" => Wallet.new(btc_data)}
+    #db_btc_currency = Currency.first(:symbol=>"btc")
+    #btc_data = CurrencyData.new(db_btc_currency)
+    #kick ali out of call pls
+    @wallets = {"rgt" => Wallet.new(currency_data)}
   end
   def start
-    #@wallets.each_value do |wallet|
-    #  Thread.new do
-    #    wallet.start
-    #  end
-    #end
+    @wallets.each_value do |wallet|
+      Thread.new do
+        wallet.start
+      end
+    end
   end
 end
 

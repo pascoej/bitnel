@@ -19,7 +19,7 @@ class Address
   include DataMapper::Resource
 
   property :id,           Serial
-  property :account_uuid,      String, :length => 60
+  property :account_uuid, String, :length => 60
   property :address,      String, :length => 80, :key => true
   property :private_key,  String, :length => 80
   property :public_key,   String, :length => 140
