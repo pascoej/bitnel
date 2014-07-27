@@ -1,0 +1,4 @@
+{
+	"dburl": "postgres://john@localhost/bn-wallet",
+	"port": "9022"
+}
