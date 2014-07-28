@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" ng-app="bitnel">
+	<head>
+		<title>Bitnel</title>
+		<link rel="stylesheet" href="/css/reset.css">
+		<link rel="stylesheet" href="/css/default.css">
+	</head>
+	<body>
+	  <div id="sidebar">
+	    <dl id="status">
+	      <dt>Websocket</dt>
+	      <dd>ON</dd>
+	      <dt>Latency</dt>
+	      <dd>100ms</dd>
+	      <dt>Engine Lag</dt>
+	      <dd>12ms</dd>
+	    </dl>
+	    <nav id="nav">
+	      <ul>
+	        <li class="header">Overview</li>
+	        <li>
+	          <a ui-sref="dashboard" href="/dashboard">Dashboard</a>
+	        </li>
+	        <li ui-sref-active="active">
+	          <a ui-sref="orders.list" href="/orders/all">Active Orders</a>
+	        </li>
+	        <li>
+	          <a href="/dashboard">Trade History</a>
+	        </li>
+	      </ul>
+	      <ul>
+	        <li class="header">Account</li>
+	        <li ngClass="{active: isActive('/tasks')}">
+	          <a href="/dashboard">Balances</a>
+	        </li>
+	        <li ngClass="{active: isActive('/tasks')}">
+	          <a href="/dashboard">Deposits</a>
+	        </li>
+	        <li ngClass="{active: isActive('/tasks')}">
+	          <a href="/withdrawals">Withdrawals</a>
+	        </li>
+	      </ul>
+	      <ul>
+	        <li class="header">Markets</li>
+	        <li ui-sref-active="active">
+	          <a ui-sref="markets.detail({ currencyPair: 'BTCUSD' })" href="/markets/BTCUSD">BTCUSD</a>
+	        </li>
+	        <li ui-sref-active="active">
+	          <a ui-sref="markets.detail({ currencyPair: 'LTCBTC' })" href="/markets/LTCBTC">LTCBTC</a>
+	        </li>
+	        <li ui-sref-active="active">
+	          <a ui-sref="markets.detail({ currencyPair: 'DOGEBTC' })" href="/markets/DOGEBTC">DOGEBTC</a>
+	        </li>
+	      </ul>
+	    </nav>
+	  </div>
+	  <div id="chat">
+	  	<header>Chat</header>
+	  	<div id="chat-setup">
+	  		<p>You currently do not have a nick associated with your account.</p>
+	  		<a href="" class="button">Setup to Join Chat</a>
+	  		or
+	  		<a href="">Hide this and let me decide later in settings</a>
+	  	</div>
+	  	<ul>
+	  		<li>Bob</li>
+		  	<li>Bob</li>
+		  	<li>Bob</li>
+		  	<li>Bob</li>
+		  	<li>Bob</li>
+		  	<li>Bob</li>
+	  	</ul>
+	  </div>
+		<div id="page">
+			<div ui-view id="body"></div>
+		</div>
+		<script src="/js/angular.js"></script>
+		<script src="/js/angular-ui-router.min.js"></script>
+		<script src="/js/app.js"></script>
+	 	<script src="/js/controllers.js"></script>
+	</body>
+</html>

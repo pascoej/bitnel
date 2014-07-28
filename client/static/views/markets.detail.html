@@ -1,0 +1,69 @@
+<header id="header">
+  <a href="" class="back" id="back">Markets</a>
+  <h1>Market {{ currencyPair }}</h1>
+</header>
+<div id="pivot">
+  <form class="form" id="pivot-form" action="">
+    <div class="selection">
+      <a href="" class="button bid active">Bid</a>
+      <a href="" class="button ask">Ask</a>
+    </div>
+    <div class="specs">
+      <div class="field">
+        <label for="">Price</label>
+        <input type="text">
+      </div>
+      <div class="field">
+        <label for="">Quantity</label>
+        <input type="text">
+      </div>
+      <div class="field">
+        <label for="">Time In Force</label>
+        <select name="" id="">
+          <option value="">Good Til' Canceled (GTC)</option>
+          <option value="">Fill Or Kill (FOK)</option>
+        </select>
+      </div>
+    </div>
+    <input type="button" class="button submit bid" value="Place Order">
+  </form>
+  <div id="charts">
+    <nav class="tabs">
+      <a class="active" href="">Price</a>
+      <a href="">Depth</a>
+    </nav>
+    <canvas id="chart" class="chart"></canvas>
+  </div>
+</div>
+<h3 class="int">Active Orders</h3>
+<table class="table-list table-orders">
+  <thead>
+    <tr>
+      <th>UUID</th>
+      <th>Status</th>
+      <th>Qty</th>
+      <th>Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="uuid" ><a href="/orders/{{order.uuid}}">12318238</a></td>
+      <td>123.44</td>
+      <td>2</td>
+      <td>just now</td>
+    </tr>
+      <tr>
+      <td class="uuid" ><a href="/orders/{{order.uuid}}">12318238</a></td>
+      <td>123.44</td>
+      <td>2</td>
+      <td>just now</td>
+    </tr>
+    <tr>
+      <td class="uuid" ><a href="/orders/{{order.uuid}}">12318238</a></td>
+      <td>123.44</td>
+      <td>2</td>
+      <td>just now</td>
+    </tr>
+  </tbody>
+</table>
+<h3 class="int">Orderbook</h3>

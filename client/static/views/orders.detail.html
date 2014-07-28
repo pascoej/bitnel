@@ -1,0 +1,52 @@
+<header id="header">
+  <h1>Active Orders</h1>
+</header>
+<h3 class="int">Order Information</h3>
+<dl class="data">
+  <dt>UUID</dt>
+  <dd>{{ orderId }}</dd>
+  <dt>Price</dt>
+  <dd>{{ order.price }}</dd>
+  <dt>Original Quantity</dt>
+  <dd>{{ order.initial_quantity }}</dd>
+  <dt>Remaining Quantity</dt>
+  <dd>{{ order.quantity }}</dd>
+  <dt>Status</dt>
+  <dd>{{ order.status }}</dd>
+</dl>
+<h3 class="int">Execution History</h3>
+<table class="table-list table-orders">
+  <thead>
+    <tr>
+      <th>Order UUID</th>
+      <th>Price</th>
+      <th>Qty</th>
+      <th>Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="uuid" ><a href="/orders/{{order.uuid}}">12318238</a></td>
+      <td>123.44</td>
+      <td>2</td>
+      <td>just now</td>
+    </tr>
+      <tr>
+      <td class="uuid" ><a href="/orders/{{order.uuid}}">12318238</a></td>
+      <td>123.44</td>
+      <td>2</td>
+      <td>just now</td>
+    </tr>
+    <tr>
+      <td class="uuid" ><a href="/orders/{{order.uuid}}">12318238</a></td>
+      <td>123.44</td>
+      <td>2</td>
+      <td>just now</td>
+    </tr>
+  </tbody>
+</table>
+<h3 class="int line">Actions</h3>
+<ul class="actions">
+  <li class="modify"><a href="">Modify</a></li>
+  <li class="delete"><a href="">Delete</a></li>
+</ul>

@@ -1,0 +1,25 @@
+<header id="header">
+  <h1>Active Orders</h1>
+</header>
+<table class="table-list table-orders">
+	<thead>
+		<tr>
+			<th>UUID</th>
+			<th>Price</th>
+			<th>Remaining</th>
+			<th>Initial</th>
+			<th>Status</th>
+			<th>Actions</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr ng-repeat="order in orders">
+			<td class="uuid" title="{{order.uuid}}"><a href="/orders/{{order.uuid}}">{{order.uuid}}</a></td>
+			<td>{{order.quantity}}</td>
+			<td>{{order.initial_quantity}}</td>
+			<td>{{order.price}}</td>
+			<td style="color: #7ED321; font-weight: bold;">{{order.status}}</td>
+			<td><a class="action first">Cancel</a><a class="action">Modify</a></td>
+		</tr>
+	</tbody>
+</table>
