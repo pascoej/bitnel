@@ -29,7 +29,7 @@ class WalletServer
     #db_btc_currency = Currency.first(:symbol=>"btc")
     #btc_data = CurrencyData.new(db_btc_currency)
     #kick ali out of call pls
-    @wallets = {"rgt" => Wallet.new(currency_data)}
+    @wallets = {"rgt" => Wallet.new(currency_data)}sou
   end
   def start
     @wallets.each_value do |wallet|
